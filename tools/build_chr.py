@@ -228,6 +228,19 @@ def make_bg_table():
         "        "
     ])
 
+    # 0x89: Sprite-0 hit target. One pixel on the LAST scanline (row 7) of HUD tile row 2,
+    # so the scroll split lands on the first playfield line instead of inside the HUD text.
+    tiles[0x89] = encode_tile([
+        "        ",
+        "        ",
+        "        ",
+        "        ",
+        "        ",
+        "        ",
+        "        ",
+        "*       "
+    ])
+
     return b''.join(tiles)
 
 def make_spr_table():
@@ -431,7 +444,7 @@ def make_spr_table():
         "        "
     ])
 
-    # --- FX: FIRE TRAILS & WARP PARTICLES (Tiles 0x20 - 0x21) ---
+    # --- FX: FIRE TRAILS & WARP PARTICLES (Tiles 0x20 - 0x21), SPRITE 0 (0x23) ---
     # 0x20: BTTF Fire Trail
     tiles[0x20] = encode_tile([
         "  222   ",
@@ -452,6 +465,17 @@ def make_spr_table():
         "  ***   ",
         " * * *  ",
         "   *    ",
+        "        "
+    ])
+    # 0x23: Sprite 0 (hit trigger): one pixel on row 0, drawn behind the background
+    tiles[0x23] = encode_tile([
+        "*       ",
+        "        ",
+        "        ",
+        "        ",
+        "        ",
+        "        ",
+        "        ",
         "        "
     ])
 

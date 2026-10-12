@@ -7,8 +7,12 @@ LDFLAGS = -lneslib -lnesdoug
 TARGET = hacktothefuture.nes
 CHR_ROM = assets/graphics.chr
 
-SRCS = src/main.c assets/chr-rom.s
-HEADERS = src/palettes.h src/sprites.h
+SRCS = $(wildcard src/*.c) assets/chr-rom.s
+HEADERS = $(wildcard src/*.h)
+
+# Headless tests (Mesen2). libstdc++ preload works around a std::bad_cast abort in MesenCore.so.
+MESEN ?= $(HOME)/.local/opt/mesen2/Mesen
+MESEN_PRELOAD ?= /usr/lib64/libstdc++.so.6
 
 all: $(TARGET)
 
@@ -22,4 +26,12 @@ $(TARGET): $(SRCS) $(HEADERS) $(CHR_ROM)
 clean:
 	rm -f $(TARGET) $(CHR_ROM)
 
-.PHONY: all clean
+# Needs a built ROM (make, or the podman build in CLAUDE.md). Exit code 0 = all passed.
+test:
+	@test -f $(TARGET) || { echo "build $(TARGET) first"; exit 1; }
+	mkdir -p tests/out
+	ROOT=$(CURDIR) LD_PRELOAD=$(MESEN_PRELOAD) timeout 180 $(MESEN) --testRunner \
+		--nes.port1.type=NesController --debug.scriptWindow.allowIoOsAccess=true \
+		$(TARGET) tests/smoke.lua
+
+.PHONY: all clean test
