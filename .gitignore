@@ -1,0 +1,9 @@
+# build artifacts (make / podman build)
+*.nes
+*.nes.elf
+*.mlb
+assets/graphics.chr
+__pycache__/
+
+# test output (screenshots)
+tests/out/
