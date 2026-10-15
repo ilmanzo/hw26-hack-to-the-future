@@ -22,7 +22,7 @@ Work before 2026-10-12 is not recorded here (the repo had no git history before 
 | **FamiTone2** + `ft2-text2data` / `ft2-nsf2data` | in the SDK / container ("famitone version 2d") | Music and SFX engine and converters. **Available, not used yet** (plan.md 7b) | Pipeline reproduced against `nesdoug-llvm`: `ft2-text2data song.txt -ca65`, then `sed 's/@/.L/g'` |
 | **Claude Code** (Anthropic CLI) | - | AI pair programming: code, analysis, tests, docs | |
 
-Files that carry the knowledge: `CLAUDE.md` (how to build/test, architecture, gotchas), `plan.md` (game concept and roadmap), this diary (history and reasons).
+Files that carry the knowledge: `AGENTS.md` (formerly `CLAUDE.md`; how to build/test, architecture, gotchas), `plan.md` (game concept and roadmap), this diary (history and reasons).
 
 ---
 

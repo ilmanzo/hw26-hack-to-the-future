@@ -12,7 +12,7 @@ Numbers marked *proposed* are starting values to tune, not decisions.
 
 ## 0. Status (checked 2026-10-12)
 
-Verified by reading the code, `make test` (headless Mesen2, see CLAUDE.md) and screenshots.
+Verified by reading the code, `make test` (headless Mesen2, see AGENTS.md) and screenshots.
 
 | Piece | State |
 |---|---|
@@ -226,14 +226,14 @@ The licence of each project is in section 10.
   5. *Sprite overflow:* measure in the emulator (Mesen's state exposes PPU status; the key name has to be checked) while two ground obstacles and the fire trail overlap Geeko; add a test if it is cheap.
   6. *Makefile `CC`:* default to the container build (a `make podman` target) or document `CC=`.
   7. *Font:* add `'` and `,` (and lowercase when the story screens need it) to `FONT_RAW` in `build_chr.py`.
-* **Code layout (done 2026-10-12).** `src/` is split into modules (`player`, `obstacles`, `progress`, `render`, `hud`, `screens`, `sfx`; see CLAUDE.md). New states are new `state_*` functions in `main.c`; epoch rooms and the boss become their own modules (`epoch.c`, `boss.c`, ...) with the same `*_reset/_update/_draw` shape.
+* **Code layout (done 2026-10-12).** `src/` is split into modules (`player`, `obstacles`, `progress`, `render`, `hud`, `screens`, `sfx`; see AGENTS.md). New states are new `state_*` functions in `main.c`; epoch rooms and the boss become their own modules (`epoch.c`, `boss.c`, ...) with the same `*_reset/_update/_draw` shape.
 * **Phase 1: sequence + warp.** A sequence table drives the state machine: `STORY`, `RACE`, `WARP`, `ROOM`, `BOSS`, `WIN`. `STATE_WARP`: flash (finally uses `warp_flash_timer`), year counter, then a placeholder room. Text-only story screens (needs the font extended). Test: poke `mph`, assert the state sequence.
 * **Phase 2: mapper + audio engine.** Move to CNROM (section 7a): CHR banked, `build_chr.py` outputs banks. Add FamiTone2 (section 7b): `sfx.c` becomes `sfx_play` calls, one test song. Test: `make test` unchanged.
 * **Phase 3: room engine.** `struct Room` (start, exit, terminals, platforms, hazards, foes, layout), Mario-style movement with inertia (section 4a), collision map, terminal + hold-B hack meter, exit gate, return to RACE. Test: hold B N frames -> hacked -> gate opens.
 * **Phase 4: foes and hazards.** Patrol, stationary hazard, projectile, moving platforms, mines; lives; vision cone for the guard (optional).
 * **Phase 5: era content.** 1990, then 2000, 2010, 2020: tiles, terminals, foes, level layout.
 * **Phase 6: boss.** Arena, 6 terminals, spitting agents, overload.
-* **Phase 7: polish.** Title (the box art), ending, era music, README/CLAUDE.md.
+* **Phase 7: polish.** Title (the box art), ending, era music, README/AGENTS.md.
 
 ---
 
