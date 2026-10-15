@@ -4,7 +4,7 @@
  *
  * Built with llvm-mos (mos-nes-nrom-clang), neslib, and nesdoug.
  *
- * main.c owns the game state machine; everything else lives in a module (see CLAUDE.md):
+ * main.c owns the game state machine; everything else lives in a module (see AGENTS.md):
  *   player / obstacles / progress  game logic
  *   render / hud / screens         what is on screen
  *   sfx                            APU sound effects

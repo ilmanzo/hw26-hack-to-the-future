@@ -26,7 +26,7 @@ $(TARGET): $(SRCS) $(HEADERS) $(CHR_ROM)
 clean:
 	rm -f $(TARGET) $(CHR_ROM)
 
-# Needs a built ROM (make, or the podman build in CLAUDE.md). Exit code 0 = all passed.
+# Needs a built ROM (make, or the podman build in AGENTS.md). Exit code 0 = all passed.
 test:
 	@test -f $(TARGET) || { echo "build $(TARGET) first"; exit 1; }
 	mkdir -p tests/out
