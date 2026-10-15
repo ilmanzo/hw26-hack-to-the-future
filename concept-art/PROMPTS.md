@@ -3,8 +3,8 @@
 Prompts for the NES package (box + cartridge + manual) of the merged game concept: RACE to 88 MPH, then HACK the terminals of each era, final boss The Mainframe (see `../plan.md`).
 
 **Attach as reference images** (image models follow references better than words):
-* `Gemini_Generated_Image_ozytewozytewozyt.jpeg` (box + cartridge + manual photo: composition, mood, Geeko with goggles, matrix rain)
-* `Gemini_Generated_Image_iymfa7iymfa7iymf.jpeg` (Mainframe boss: red eye monolith, orange crab agents)
+* `box-cartridge-manual-photo.jpeg` (box + cartridge + manual photo: composition, mood, Geeko with goggles, matrix rain)
+* `illustration-mainframe-boss-tongue-vs-crab.jpeg` (Mainframe boss: red eye monolith, orange crab agents)
 * one or two real game screenshots from `make test` (`tests/out/playing.png`, `tests/out/gameover.png`, 256x240, use as the pixel-art screenshots on the manual and box back)
 * the openSUSE logo (the chameleon in the second concept image given in chat)
 

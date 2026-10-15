@@ -27,7 +27,7 @@ podman build -t llvm-mos -f Containerfile .
 podman run --rm -v "$PWD":/src:Z llvm-mos make CC=mos-nes-nrom-clang
 ```
 
-The SDK tarball is downloaded without checksum verification.
+The SDK tarball is verified against `LLVM_MOS_SHA256` (sha256 of `llvm-mos-linux.tar.xz`); a mismatch fails the build. When bumping `LLVM_MOS_VERSION`, update the hash too (GitHub shows it as the release asset digest, `gh api repos/llvm-mos/llvm-mos-sdk/releases/tags/<ver> --jq '.assets[].digest'`). The base image is `bci-base:latest`, not pinned.
 
 ### Headless testing (Mesen2)
 

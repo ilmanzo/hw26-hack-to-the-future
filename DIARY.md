@@ -18,7 +18,7 @@ Work before 2026-10-12 is not recorded here (the repo had no git history before 
 | **Lua** | 5.4 (`luac -p` for syntax checks) | `tests/smoke.lua`, `tests/trace.lua` (run inside Mesen2) | A Lua error inside a Mesen callback hangs the runner: always run under `timeout` |
 | **Nestopia** | 1.53.2 (flatpak) | Playing the ROM by hand | No scripting |
 | **Git** | system | Version control (initialised 2026-10-12) | `*.nes`, `.elf`, `.mlb`, `graphics.chr` are ignored (build outputs) |
-| **Gemini** (Google) | - | Concept art in `concept-art/` | The files are named `Gemini_Generated_Image_*`; the lower-res JPGs look like earlier renders of the same four images |
+| **Gemini** (Google) | - | Concept art in `concept-art/` | The files were named `Gemini_Generated_Image_*` (renamed by content on 2026-10-15); the lower-res JPGs look like earlier renders of the same four images |
 | **FamiTone2** + `ft2-text2data` / `ft2-nsf2data` | in the SDK / container ("famitone version 2d") | Music and SFX engine and converters. **Available, not used yet** (plan.md 7b) | Pipeline reproduced against `nesdoug-llvm`: `ft2-text2data song.txt -ca65`, then `sed 's/@/.L/g'` |
 | **Claude Code** (Anthropic CLI) | - | AI pair programming: code, analysis, tests, docs | |
 
@@ -32,7 +32,7 @@ Files that carry the knowledge: `CLAUDE.md` (how to build/test, architecture, go
 NROM runner (jump over bugs and tumbleweeds, duck under drones, 20 -> 88 MPH), a 16x24 Geeko, everything in one `src/main.c` (542 lines), no tests, no git, ROM built with a local llvm-mos that was no longer installed.
 
 ### Build in a container
-`Containerfile` downloads the llvm-mos SDK release into `bci-base`. The ROM it builds is byte-identical to the one that was already in the tree, so the container is a drop-in toolchain. The SDK tarball has no published checksum, so the download is not verified.
+`Containerfile` downloads the llvm-mos SDK release into `bci-base`. The ROM it builds is byte-identical to the one that was already in the tree, so the container is a drop-in toolchain. The SDK tarball was first downloaded unverified; since 2026-10-15 the `Containerfile` pins its SHA256 (see "Publishing" below).
 
 ### Geeko sprite, five iterations
 Reference: the openSUSE logo (side-view chameleon, spiral tail, big ring eye, long smile).
@@ -108,5 +108,8 @@ How it was verified without trusting the eye: `tests/trace.lua` plays a fixed 90
 ### Memory and commit
 Session memory (decisions, sibling-project references, feedback) lives in `memory/` inside the repo, with a symlink from Claude Code's memory directory so it still loads. The first session's work was committed in three commits (code, docs, concept art). `concept-art/` grew from 8 to 11 Gemini images during the day; the 7 new ones are not catalogued yet.
 
+### Publishing (2026-10-15)
+Pushed to a public GitHub repo, `ilmanzo/hw26-hack-to-the-future`. Binary images are gitignored; the concept art is linked from an external site, and the images-only commit was removed from local history before the first push so the 31 MB never reached GitHub. The repo is **GPL-3.0** (`LICENSE`). The README was rewritten to match the current game. The `Containerfile` now downloads the llvm-mos SDK to a file and checks its SHA256 (`LLVM_MOS_SHA256`, matches GitHub's release asset digest and a local download); a wrong hash fails the build (tested), and the ROM built in the pinned container is byte-identical to the previous one.
+
 ### Open / next
-See `plan.md` section 9 (open decisions) and section 0 (known issues): score HUD column, drone hitbox, sprite-per-scanline overflow, README out of date, mapper choice.
+See `plan.md` section 9 (open decisions) and section 0 (known issues): score HUD column, drone hitbox, sprite-per-scanline overflow, mapper choice.
