@@ -7,3 +7,8 @@ __pycache__/
 
 # test output (screenshots)
 tests/out/
+
+# binary assets (concept art is linked externally, not stored here)
+*.png
+*.jpg
+*.jpeg
