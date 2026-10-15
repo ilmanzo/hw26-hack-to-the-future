@@ -26,7 +26,7 @@ Verified by reading the code, `make test` (headless Mesen2, see CLAUDE.md) and s
 1. **Score HUD shows score x 10.** `hud_update()` (`hud.c`) writes the 5 digits at column 15, but the static text `SCR:00000` has its digits at 16-20. The colon is overwritten and a stale `0` stays at column 20 (code + screenshot: `SCR000270`). Fix: column 16.
 2. **A standing player is not hit by a drone.** Drone hitbox y138-147, standing hitbox starts y150 (confirmed in the emulator, `XFAIL` in `tests/smoke.lua`). "Duck under drones" currently does nothing.
 3. **The 88 MPH warp is only a sound.** `warp_flash_timer` is set to 30 in `progress.c` and never read or decremented: no flash, no transition.
-4. **`README.md` is out of date.** It still describes the orange vest, the old 16x24 sprite and an endless-runner-only game.
+4. ~~**`README.md` is out of date.**~~ **Fixed 2026-10-15:** rewritten (current state, controls, build/test, licence).
 5. **8 sprites per scanline not measured.** Geeko is 3 tiles wide now; 2 ground obstacles + Geeko + fire trail can exceed 8. Draw order protects obstacles (trail is last), but nobody has looked at it in the emulator.
 6. `Makefile` hardcodes `CC` to a path that does not exist on this machine (builds go through the `Containerfile`).
 7. The font has no `'` or `,`: the title strings `GEEKO MCFLY '85` and `WHERE WE GO, NO ROADS!` show blanks there.
@@ -84,14 +84,14 @@ Read from the MSX repo on 2026-10-12 (`README.md`, `GEMINI.md`, `plan.md`, `src/
 
 ## 2. Concept art (`concept-art/`)
 
-Four images inspected on 2026-10-12 (they existed as low-res `17917…jpg` plus a 2752x1536 `Gemini_Generated_Image_…` copy; the low-res copies have since been removed from the folder). Seven more Gemini images were added to the folder after this inspection and are **not catalogued yet** (likely renders from `concept-art/PROMPTS.md`).
+Eleven images, named by content (renamed from `Gemini_Generated_Image_*` on 2026-10-15). The image files are not in the repo (`*.jpeg` is gitignored); they are linked from an external site. Four were inspected on 2026-10-12 (they existed as low-res `17917…jpg` plus a 2752x1536 copy; the low-res copies have since been removed) and are catalogued below. The other seven (renders from `concept-art/PROMPTS.md` and NES-style mock-ups, `nes-*` and `illustration-race-*` / `illustration-1990-*`) are identified by filename only.
 
-| File (low-res / hi-res) | Shows | Design takeaways |
+| File | Shows | Design takeaways |
 |---|---|---|
-| `Gemini_Generated_Image_ozytew…` (a photo mock-up of box + cartridge + manual; the flat cover art was `1791699937579.jpg`, now removed) | Box art "ゲーコング" by **GEEKO SOFT**. Geeko with goggles, thumbs up, spiral tail, sitting on a CRT between tower PCs; green binary rain over server racks; orange diagonal banner. **MSX/MSX2-branded**, not NES. | Tone and palette (black, openSUSE green, orange, CRT cyan glow). A NES box/cart label would need a re-brand. Geeko wears goggles; ours does not (cheap to add) |
-| `…jyqvej…` | **1990 stage.** Two-tier steel catwalk with railings. Geeko crouches on the upper tier and hacks a beige tower + CRT showing a green `>_ openSUSE` prompt, with cyan particles. A server at the right shows a **blue screen**. Below: a hovering **security drone** and an **armoured guard**, each with a red **vision cone**. HUD: portrait + health bar, `LIVES x3`, score, inventory slots (tower/terminal/etc. with counts), tool slots (wrench, hourglass) | Unhacked = blue screen, hacked = green terminal (cheap, readable state change). Vision cones imply stealth: foes are dangerous when you are in the cone. Two tiers fit one NES screen |
-| `…vzr0hq…` | **2010 stage.** Geeko **hangs by its tail** from an overhead pipe and hacks a **laptop** on a hovering platform (openSUSE logo on screen). Hazards: red **laser tripwires** across the floor, a sparking ceiling machine. HUD: health + energy bars, lives, score, wrench + laptop slots, openSUSE badge | The ceiling hang is not ported (jumping instead). Hazards that are not creatures (lasers, sparks) are cheap to implement and era-flavoured |
-| `…iymfa7…` | **Boss: THE MAINFRAME.** A monolith with a huge red slit-pupil eye, a teal swirl emblem, red circuit lines, smoke, flanked by server racks. Geeko leaps along a catwalk; its tongue is a magenta lightning bolt hitting an **orange pixel crab** (AI agent, shown glitching into green code); a second crab hovers; a cyan star sparkle. HUD: boss bar "THE MAINFRAME", player health + energy, lives, score | Boss = one static, big, readable sprite group + projectiles. The boss bar can be the count of unhacked terminals. The crab matches the "Clawd" agent of the MSX plan (likely; the art does not say) |
+| `msx-box-cartridge-manual-photo.jpeg` (a photo mock-up of box + cartridge + manual; the flat cover art was `1791699937579.jpg`, now removed) | Box art "ゲーコング" by **GEEKO SOFT**. Geeko with goggles, thumbs up, spiral tail, sitting on a CRT between tower PCs; green binary rain over server racks; orange diagonal banner. **MSX/MSX2-branded**, not NES. | Tone and palette (black, openSUSE green, orange, CRT cyan glow). A NES box/cart label would need a re-brand. Geeko wears goggles; ours does not (cheap to add) |
+| `illustration-server-room-tongue-hack-guard-drone.jpeg` | **1990 stage.** Two-tier steel catwalk with railings. Geeko crouches on the upper tier and hacks a beige tower + CRT showing a green `>_ openSUSE` prompt, with cyan particles. A server at the right shows a **blue screen**. Below: a hovering **security drone** and an **armoured guard**, each with a red **vision cone**. HUD: portrait + health bar, `LIVES x3`, score, inventory slots (tower/terminal/etc. with counts), tool slots (wrench, hourglass) | Unhacked = blue screen, hacked = green terminal (cheap, readable state change). Vision cones imply stealth: foes are dangerous when you are in the cone. Two tiers fit one NES screen |
+| `illustration-tail-hang-laser-grid-laptop.jpeg` | **2010 stage.** Geeko **hangs by its tail** from an overhead pipe and hacks a **laptop** on a hovering platform (openSUSE logo on screen). Hazards: red **laser tripwires** across the floor, a sparking ceiling machine. HUD: health + energy bars, lives, score, wrench + laptop slots, openSUSE badge | The ceiling hang is not ported (jumping instead). Hazards that are not creatures (lasers, sparks) are cheap to implement and era-flavoured |
+| `illustration-mainframe-boss-tongue-vs-crab.jpeg` | **Boss: THE MAINFRAME.** A monolith with a huge red slit-pupil eye, a teal swirl emblem, red circuit lines, smoke, flanked by server racks. Geeko leaps along a catwalk; its tongue is a magenta lightning bolt hitting an **orange pixel crab** (AI agent, shown glitching into green code); a second crab hovers; a cyan star sparkle. HUD: boss bar "THE MAINFRAME", player health + energy, lives, score | Boss = one static, big, readable sprite group + projectiles. The boss bar can be the count of unhacked terminals. The crab matches the "Clawd" agent of the MSX plan (likely; the art does not say) |
 
 Conflicts between the art and this plan:
 * The art hacks with the **tongue** (and uses it as a weapon on the boss). The plan follows the MSX design: **no weapons**, hack by standing in a zone and holding B. The tongue is not part of the sprite any more.
@@ -247,7 +247,7 @@ The licence of each project is in section 10.
   1. *Score HUD:* write the digits at column 16 in `hud_update()`. Test: after some frames, read the nametable cells of the HUD row and assert `SCR:` keeps its colon and the digits match `score` (Mesen can read PPU memory; the exact memory type name still has to be checked).
   2. *Drone:* move the flying drone down so its box (y+2, 10 high) overlaps a standing player but not a ducking one: y = 144 gives a box of 146-156 against standing 150-170 and ducking 158-168. Test: turn the `XFAIL` into a `check` and add "ducking player passes under a drone".
   3. *Warp:* implemented in Phase 1 (it needs the new state).
-  4. *README:* rewrite after the design settles (title, controls, build/test commands, link to `plan.md`); do the factual parts now (sprite, controls, ROM size).
+  4. *README:* done 2026-10-15 (current state, controls, build/test commands, link to `plan.md`); revisit when the design lands.
   5. *Sprite overflow:* measure in the emulator (Mesen's state exposes PPU status; the key name has to be checked) while two ground obstacles and the fire trail overlap Geeko; add a test if it is cheap.
   6. *Makefile `CC`:* default to the container build (a `make podman` target) or document `CC=`.
   7. *Font:* add `'` and `,` (and lowercase when the story screens need it) to `FONT_RAW` in `build_chr.py`.
@@ -279,7 +279,7 @@ Still open:
 5. **Terminals per room and hack times:** values in section 3 are guesses; so are the physics constants in section 4a.
 6. **Geeko in rooms:** keep the 24 px sprite (budget: section 7.2) or draw a smaller one.
 7. **Story screens:** how many and how long; they need a lowercase/punctuation font (currently only `A-Z 0-9` and a few symbols, and `'` / `,` render blank).
-8. **Licence of this repo:** see section 10.
+8. ~~**Licence of this repo:**~~ **Decided 2026-10-15: GPL-3.0** (`LICENSE`). See section 10.
 9. **Branding:** the box art is MSX-branded; the concept art uses the openSUSE logo and AI-company-named agents (Clawd / ChatGPT / Gemini in the MSX plan). Proposed renames: **PINCHBOT** (orange blocky crab), **WHIRLY** (teal swirl), **TWINKLE** (cyan star), redrawn rather than copied (`concept-art/PROMPTS.md`). Check the openSUSE logo guidelines (the MSX plan says the same).
 
 ---
@@ -300,8 +300,8 @@ Checked 2026-10-12 from each project's `LICENSE` / README in `nesdev/` (siblings
 | `MK1_NES` (Mojon Twins, MT Engine MK1) | **LGPL-3.0**; README: game assets in the testers and examples are donationware | Linking is fine; copying engine code carries LGPL terms. Do not copy assets |
 | MSX sibling (`msxdev/hack-to-the-future`) | Code **GPL-3.0**; assets **CC BY-NC-SA 4.0** (Associazione MSX Italia), "derived from Chrono Runner" | Ideas free. Copying code means GPL-3.0 for the result; copying assets means attribution + non-commercial + share-alike, and Chrono Runner's own provenance |
 
-What this means for this repo (no LICENSE file yet):
+What this means for this repo (`LICENSE` is GPL-3.0 since 2026-10-15; the bullets below are the reasoning that led there):
 * Nothing here is *forced* on us as long as we copy no code or assets. We already ship MIT / public-domain library code (nesdoug, neslib, FamiTone2) in the ROM: keep a credits file with their notices.
 * If code or data is copied from the MSX project, this repo becomes GPL-3.0 (code) and CC BY-NC-SA 4.0 (assets). That also rules out commercial use.
-* If we stay ideas-only, any licence works. MIT would match most of the neighbours; GPL-3.0 would match the MSX sibling and keep the two projects mergeable.
+* If we stay ideas-only, any licence works. MIT would match most of the neighbours; GPL-3.0 would match the MSX sibling and keep the two projects mergeable. **Chosen: GPL-3.0.** MSX *code* can now be shared both ways; MSX *assets* (CC BY-NC-SA 4.0, non-commercial) still need their own terms and are not covered by the repo licence.
 * The MIT/CC0 projects (`file-fixers`, `witchnwiz`, `nes-starter-kit`, `nesdoug-llvm`) are safe sources if we want a reference implementation to copy from; `from-below` and `famidash` content are not.

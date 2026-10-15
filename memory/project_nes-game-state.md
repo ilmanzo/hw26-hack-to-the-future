@@ -10,11 +10,12 @@ metadata:
 
 State at the end of 2026-10-12 (verify with `git log` / `git status`, this goes stale):
 
-* Everything done in the first session is **committed** (code modules + tests + tools, docs, concept art; see `git log`). Untracked on purpose: `geeko_test.png` (unknown origin, left alone).
+* Published 2026-10-15 as a **public GitHub repo**: https://github.com/ilmanzo/hw26-hack-to-the-future (`origin/main`). Binary images (`*.png`, `*.jpg`, `*.jpeg`) are gitignored on purpose: the concept art is linked from an external site, not stored, and the commit that added it was dropped from history before the first push. `concept-art/*.jpeg` and `geeko_test.png` stay on disk, untracked.
+* Licence **GPL-3.0** (`LICENSE`, decided 2026-10-15). `Containerfile` pins the llvm-mos SDK by SHA256 (base image `bci-base:latest` is not pinned). README rewritten 2026-10-15.
 * Design direction (user decisions, 2026-10-12): the game is **RACE** (existing runner to 88 MPH) **+ HACK** (rooms with terminals, ported from the MSX sibling). **Hold B** to hack. **No combat**, no tongue. **No tail-hang**: Mario-style jumping on the hoverboard with inertia on start/stop. Geeko sprite is the logo-style design with a big head (user rejected "dog-like" versions).
-* **Next session starts at Phase 0 of `plan.md`** (section 8): fix the 4 known bugs (score HUD x10, drone never hits a standing player, 88 MPH warp is only a sound, README out of date) plus the 3 smaller ones in plan.md section 0, each with a test (`make test`).
-* Pending decisions (plan.md section 9): mapper (CNROM recommended), music engine (FamiTone2 recommended, already in the SDK), 4th epoch (2020 vs 2054), rooms per epoch, licence of this repo, branding of the AI agents (proposed names PINCHBOT / WHIRLY / TWINKLE).
-* `concept-art/` has 7 newer Gemini images (probably renders from `PROMPTS.md`) that nobody has looked at or catalogued yet; the low-res `17917*.jpg` copies were removed by the user.
+* **Next session starts at Phase 0 of `plan.md`** (section 8): fix the known bugs (score HUD x10, drone never hits a standing player, 88 MPH warp is only a sound; README is already fixed) plus the 3 smaller ones in plan.md section 0, each with a test (`make test`).
+* Pending decisions (plan.md section 9): mapper (CNROM recommended), music engine (FamiTone2 recommended, already in the SDK), 4th epoch (2020 vs 2054), rooms per epoch, branding of the AI agents (proposed names PINCHBOT / WHIRLY / TWINKLE).
+* `concept-art/` has 11 images, renamed by content on 2026-10-15 (`nes-pixel-*`, `illustration-*`, `*-box-cartridge-manual-photo`). Only 4 are catalogued in `plan.md` section 2; the other 7 are known by filename only. The low-res `17917*.jpg` copies were removed by the user.
 * This memory directory lives in the repo (`memory/`); `~/.claude/projects/.../memory` is a symlink to it.
 
 **Why:** the user is building this for openSUSE Hack Week 26 (Nov 30 - Dec 4, 2026) and iterates in small steps, giving direction one message at a time.
