@@ -62,8 +62,8 @@ Three pieces must stay in sync; changing one usually means touching the others:
 
 1. **`tools/build_chr.py`** generates `assets/graphics.chr` (exactly 8192 bytes, asserted). All art is ASCII art in the script (`' '`/`'.'`=color 0 transparent, `1`/`2`/`3`=colors). Layout:
    - Pattern table 0 (`$0000`, BG): tile index == ASCII code for font (0x20–0x5F), road/sky/mountain tiles at 0x80–0x88, sprite-0 target 0x89.
-   - Pattern table 1 (`$1000`, sprites): Geeko ride 0x00–0x08 (24x24, 3x3 tiles, row-major) and duck 0x09–0x0E (24x16), obstacles 0x10–0x1B, FX 0x20–0x21 (fire trail, crash star), sprite-0 pixel 0x23. Geeko is drawn as two whole ASCII pictures (`GEEKO_RIDE`, `GEEKO_DUCK`) that `put_sprite()` slices into tiles. Edit the picture, not tiles; `sprites.h` assumes this 3-wide row-major layout.
-   2. **`assets/chr-rom.s`** `.incbin`s `graphics.chr` into the `.chr_rom` section. The Makefile finds it via `-Iassets`.
+   - Pattern table 1 (`$1000`, sprites): Geeko ride 0x00–0x03 (16x16, 2x2 tiles, row-major) and duck 0x04–0x07 (same 16x16 cell, body squashed onto the board), obstacles 0x10–0x1B, FX 0x20–0x21 (fire trail, crash star), sprite-0 pixel 0x23. Geeko is drawn as two whole ASCII pictures (`GEEKO_RIDE`, `GEEKO_DUCK`) that `put_sprite()` slices into tiles. Edit the picture, not tiles; `sprites.h` assumes this 2-wide row-major layout. Geeko uses sprite sub-palette 0 (light green, dark green, white); the board is in rows 10-15 of both poses.
+   2. **`assets/chr-rom.s`** `.incbin`s `graphics.chr` into the `.chr_rom` section. The Makefile finds it via `-Iassets`. **`assets/audio.s`** includes the generated FamiTone2 data (`assets/audio/chill.s`, `sfx.s`) as `music_data` / `sounds_data`.
 3. **`src/`** consumes those tile indices by number. One module per concern (`.h` = what other modules may use, `.c` = private state):
 
    | Module | Owns |
@@ -75,7 +75,7 @@ Three pieces must stay in sync; changing one usually means touching the others:
    | `render` | `render_all_sprites()`: the one place that decides OAM draw order |
    | `hud` | HUD text and numbers, sprite 0 + its target tile, the scroll split (`hud_scroll()`) |
    | `screens` | Background nametable, title screen, CRASH banner |
-   | `sfx` | APU sound effects |
+   | `sfx` | FamiTone2 music (`sfx_music_start/stop`) and sound effects (`sfx_jump`, ...) |
    | `game.h` | Constants and `struct Box` shared by several modules |
    | `sprites.h`, `palettes.h` | Data: metasprite arrays (`dx, dy, tile, attr`, `128`-terminated) and palettes. Sprite attr palette index selects the sub-palette (0 Geeko, 1 tumbleweed, 2 bug/drone, 3 FX) |
 
@@ -88,10 +88,10 @@ Three pieces must stay in sync; changing one usually means touching the others:
 - Both nametables A and B are filled by `background_draw()` for seamless horizontal scroll; only A gets the HUD text (HUD is above the split so B never shows it).
 - HUD numbers update through the nesdoug VRAM buffer (`multi_vram_buffer_horz`), not direct PPU writes, while rendering is on. Direct `vram_*` writes require `ppu_off()`.
 - Speed derives from `mph` (20→88, 88 triggers warp); `speed_px = 2 + mph/25`.
-- OAM draw order matters (`render.c`): sprite 0 first, then obstacles, Geeko, fire trail. Past 8 sprites per scanline the PPU drops the lowest-priority ones; Geeko is 3 tiles wide, so keep the fire trail last.
+- OAM draw order matters (`render.c`): sprite 0 first, then obstacles, Geeko, fire trail. Past 8 sprites per scanline the PPU drops the lowest-priority ones; Geeko is 2 tiles wide, but keep the fire trail last.
 - Collision: `nesdoug check_collision()` takes pointers to structs whose first four bytes are `x, y, width, height`. `struct Box` (game.h) and `struct Obstacle` (obstacles.c) keep those first on purpose; do not reorder.
-- Geeko-art-dependent hand-tuned numbers: crash burst position and hitbox (`player.c`: x+4, w 16). Duck art is placed at dy=7 (`sprites.h`) so the hoverboard stays at the same height as when riding. Re-check these if you redraw Geeko.
-- Sound: raw APU register pokes (`POKE(0x40xx, …)`), no sound engine. Channel use: Pulse1 jump/duck, Pulse2 beep, Triangle warp, Noise crash.
+- Geeko-art-dependent hand-tuned numbers: hitbox (`player.c`: x+2, w 12; standing y+1, h 15; crouched y+6, h 10), crash star at x+4, y+2, fire trail at y+7 / y+8 (`render.c`), and `GROUND_Y` 155 (`game.h`, sprite top; the board's bottom row sits at y 170 as before). Both poses keep the board in the same rows so it does not jump when ducking. Re-check these if you redraw Geeko.
+- Sound: FamiTone2 (in neslib's NMI). Music = one track (`assets/audio/chill.ftm`, CC0, placeholder) that plays while `STATE_PLAYING` and stops on the crash; the title screen is silent. Effects use slots 0-3 by APU channel: Pulse1 jump/duck, Pulse2 beep, Triangle warp, Noise crash; FamiTone2 has no volume column and few effects, so the song was cut down on export (see `plan.md` section 7b). `assets/audio/*.s` are generated (FamiStudio in a container, `tools/export_audio.sh`); the `.ftm` / `.txt` next to them are the sources. `tests/smoke.lua` reads the emulated APU state to check that music plays, the title is silent and everything is silent after a crash.
 
 ### Refactoring safety net
 
@@ -101,3 +101,4 @@ Three pieces must stay in sync; changing one usually means touching the others:
 
 - Font only covers: space `! " # % ( ) + - . / :`, `0-9`, `A-Z`. Anything else (lowercase, `'`, `,`, …) renders as a blank tile. Current title strings `"GEEKO MCFLY '85"` and `"WHERE WE GO, NO ROADS!"` contain `'` and `,`, so those glyphs are invisible. Add the glyph to `FONT_RAW` in `build_chr.py` to fix.
 - `vram_write` lengths in `screens.c` and `hud.c` are hand-counted literals; change a string and its length together.
+- Audio is FamiTone2 (draft, 2026-10-16). Never poke the APU registers (`POKE(0x40xx, ...)`) from game code: the engine rewrites every channel each frame, so a raw poke lasts one frame at most (and before the engine, a halt bit in a raw poke made the crash noise ring forever). New effects go in `assets/audio/sfx.txt` (one song per effect, in the order of the `SFX_*` ids in `sfx.c`), then `tools/export_audio.sh`.

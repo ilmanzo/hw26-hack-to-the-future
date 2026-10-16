@@ -7,7 +7,7 @@
  * main.c owns the game state machine; everything else lives in a module (see AGENTS.md):
  *   player / obstacles / progress  game logic
  *   render / hud / screens         what is on screen
- *   sfx                            APU sound effects
+ *   sfx                            music and sound effects (FamiTone2)
  */
 
 #include <neslib.h>
@@ -40,6 +40,7 @@ static void session_start(void) {
     hud_draw_static();
     ppu_on_all();
 
+    sfx_music_start();
     sfx_beep();
 }
 
@@ -60,6 +61,7 @@ static void state_playing(unsigned char pad, unsigned char pad_new) {
 
     player_get_box(&player_box);
     if (obstacles_hit(&player_box)) {
+        sfx_music_stop();
         sfx_crash();
         game_state = STATE_GAMEOVER;
         progress_game_over();

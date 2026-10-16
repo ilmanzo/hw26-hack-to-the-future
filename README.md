@@ -12,7 +12,7 @@ The finished game has two halves: the **race** (an endless runner that ends in a
 | Piece | State |
 |---|---|
 | Endless runner: road, jump/duck, 3 obstacle types, score, hi-score, 20 → 88 MPH | Works, smoke-tested |
-| HUD with sprite-0 scroll split, APU sound effects | Works |
+| HUD with sprite-0 scroll split, FamiTone2 sound effects and a draft music track | Works |
 | 88 MPH time warp | Only a sound for now (speed stops at 88) |
 | Era rooms, terminal hacking, story screens, boss | Not started |
 
@@ -51,13 +51,17 @@ The output is `hacktothefuture.nes` (40,976 bytes, iNES 2.0). It runs in any NES
 * **Code:** C via [llvm-mos](https://github.com/llvm-mos/llvm-mos-sdk) with `neslib` and `nesdoug`.
 * **Art:** all tiles are ASCII art in `tools/build_chr.py`, which generates `assets/graphics.chr`.
 * **Video:** sprite-0 hit raster split (fixed HUD, scrolling playfield).
-* **Sound:** raw APU register writes (Pulse 1 jump/duck, Pulse 2 beep, Triangle warp, Noise crash).
+* **Sound:** FamiTone2 music and effects (music exported from FamiTracker with FamiStudio, `tools/export_audio.sh`).
 
 ## More docs
 
 * [`plan.md`](plan.md): game design and roadmap
 * [`DIARY.md`](DIARY.md): what was done and the tool notes
 * [`AGENTS.md`](AGENTS.md): architecture, runtime model and testing, for contributors and coding agents
+
+## Credits
+
+* Music (draft): `nes_23-chill` by Phillip Miller ("redactionary"), from the [Free NES Music Pack](https://opengameart.org/content/free-nes-music-pack) on OpenGameArt, CC0 (the author's `read_me.txt`: free for anything, with or without attribution). Source: `assets/audio/chill.ftm`.
 
 ## License
 

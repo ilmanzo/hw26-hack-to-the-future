@@ -34,7 +34,7 @@ NROM runner (jump over bugs and tumbleweeds, duck under drones, 20 -> 88 MPH), a
 ### Build in a container
 `Containerfile` downloads the llvm-mos SDK release into `bci-base`. The ROM it builds is byte-identical to the one that was already in the tree, so the container is a drop-in toolchain. The SDK tarball was first downloaded unverified; since 2026-10-15 the `Containerfile` pins its SHA256 (see "Publishing" below).
 
-### Geeko sprite, five iterations
+### Geeko sprite, six iterations
 Reference: the openSUSE logo (side-view chameleon, spiral tail, big ring eye, long smile).
 1. Shrunk the head (too large), then added a small smile (a 1-px mouth gap with the lip tip curled up) and a wiggling tongue as a separate 1-tile sprite.
 2. Redrew Geeko as 24x24 in the logo's style; wider hitbox. Result looked like a dog with a big spiral tail.
@@ -43,6 +43,8 @@ Reference: the openSUSE logo (side-view chameleon, spiral tail, big ring eye, lo
 5. Made the **head** the main feature (casque spike, 6x6 ring eye, long smile). This matched the logo.
 
 What worked: drawing whole sprites as ASCII pictures and slicing them into tiles (`put_sprite()`), plus a Pillow preview rendered from the *built* CHR and the real metasprite tables, so what I looked at was what the game uses. Colour budget is 3 + transparent, so the pupil and mouth are transparent holes (dark sky shows through). Rolling back was only possible from a manual backup (no git yet).
+
+6. **2026-10-16: redesigned as 16x16.** References from the user: a round-headed cartoon chameleon on a branch (rejected as too detailed for 16 px), a shaded pixel-art chameleon, and a very simple striped one with a spiral tail (this one worked). Result: striped dome back (even columns light green, odd dark green), big white eye with a dark pupil, small curled tail, 2-wide legs, standing on a white hoverboard with a dark-green stripe; crouched pose = body squashed onto the same board. 16x16 = 2x2 tiles instead of 3x3: 2 sprites per scanline instead of 3. Palette 0 changed from green/orange/white to light green/dark green/white, so the orange is gone from Geeko (the fire trail keeps orange/yellow). `GROUND_Y` 148 -> 155 so the board stays at the same height; hitbox x+2, w 12; `make test` passes (the drone XFAIL is unchanged). Looked at in the real emulator with a throwaway Lua script (screenshots of ride, duck, jump and the 88 MPH trail).
 
 ### Mesen2 for automated testing
 Goal: play the game without a human. Nestopia has no scripting; Mesen2 has Lua and a headless runner.
@@ -113,3 +115,12 @@ Pushed to a public GitHub repo, `ilmanzo/hw26-hack-to-the-future`. Binary images
 
 ### Open / next
 See `plan.md` section 9 (open decisions) and section 0 (known issues): score HUD column, drone hitbox, sprite-per-scanline overflow, mapper choice.
+
+### Crash noise never stopped (2026-10-16)
+Reported by the user: after a crash the sound kept playing, also after restarting. Reproduced in Mesen (`emu.getState()`): noise length counter stuck at 18 with `halt=true`, 7 s later and after restart. Cause: `sfx_crash()` wrote `$400C = $3f`, bit 5 is the length-counter halt. Fix: `$400C = $0f` (decay envelope, ~1 s fade) and `$400F = $c0` (length 192, 1.6 s). Regression check in `tests/smoke.lua` ("crash noise stops by itself"); it failed on the old ROM and passes now. The other four effects were checked by reading their register values (none sets the halt bit), not by running them.
+
+### Music export pipeline (2026-10-16)
+FamiStudio 4.5.3 (container, Xvfb) exports CC0 `.ftm` files to FamiTone2 data; `nes_23-chill` was then played by the SDK's FamiTone2 in a throwaway ROM and the APU registers checked in Mesen (details and caveats in `plan.md` section 7b). `ft2-text2data` rejects these files, FamiStudio's own FamiTone2 export does not. Nothing of this is in the game yet (Phase 2).
+
+### Music and effects in the game, draft (2026-10-16)
+FamiTone2 now drives everything: `sfx.c` is `music_play` / `sfx_play`, the raw APU pokes are gone. `assets/audio/chill.ftm` (CC0, Free NES Music Pack) and `sfx.txt` (five effects as FamiStudio text songs, written by script) are exported by `tools/export_audio.sh` (FamiStudio in a container) to `chill.s` / `sfx.s`; the Makefile links `-lfamitone2`. Noise note C4 in FamiStudio = noise period index 14 (the old effect's `$400E = $0e`); C2 = 6, C#3 = 9, C3 = 10. FamiStudio's noise SFX volume bytes have the length-counter halt bit set (`$3f ... $31`), harmless here because the music engine rewrites `$400C` every frame once the effect ends. PRG used: about 8.6 KB of 32 KB. Tests: the old `crash noise` check (length counter) could no longer apply, so the audio checks now read the emulated APU state (`sounding()` in `tests/smoke.lua`: length counter running and volume above 0); on the pre-music ROM from `git HEAD` they fail on the crash noise as they should. A first version based on register writes could not see a held note, so I dropped it.
