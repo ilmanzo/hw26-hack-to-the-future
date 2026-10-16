@@ -37,6 +37,20 @@ emu.addMemoryCallback(function()
   if line < 240 then split_lines[line] = true end
 end, emu.callbackType.write, 0x2005, 0x2005)
 
+-- Which APU channels are really sounding right now, read from the emulated APU state (a channel
+-- sounds when its length counter runs and its volume is above 0). Independent of how the sound is
+-- produced, so it also catches a note that never stops.
+local function sounding()
+  local st, out = emu.getState(), {}
+  for _, ch in ipairs({"square1", "square2", "noise"}) do
+    local p = "apu." .. ch .. ".envelope."
+    local vol = st[p .. "constantVolume"] and st[p .. "volume"] or st[p .. "counter"]
+    if st[p .. "lengthCounter.counter"] > 0 and vol > 0 then out[#out + 1] = ch end
+  end
+  if st["apu.triangle.lengthCounter.counter"] > 0 and st["apu.triangle.linearCounter"] > 0 then out[#out + 1] = "triangle" end
+  return table.concat(out, ",")
+end
+
 local function shot(name)
   local f = io.open(ROOT .. "/tests/out/" .. name .. ".png", "wb")
   if f then f:write(emu.takeScreenshot()); f:close() end
@@ -70,6 +84,7 @@ local OBS_BUG, OBS_DRONE = 0, 2
 local function body()
   wait(30)
   check(u8("game_state") == STATE_TITLE, "boots to title screen")
+  check(sounding() == "", "title screen is silent (sounding: " .. sounding() .. ")")
 
   check(start_game(), "Start begins the game")
   check(u8("mph") == 20, "starts at 20 MPH")
@@ -97,6 +112,7 @@ local function body()
 
   wait(40)
   check(u16("score") > 0, "score increases while playing")
+  check(wait_until(function() return sounding():find("square1") ~= nil end, 120), "music plays while playing (Pulse 1 sounds)")
   shot("playing")
 
   -- One main-loop iteration per video frame: scroll advances exactly speed_px every frame.
@@ -117,6 +133,12 @@ local function body()
   plant(OBS_BUG, 154, 14)
   check(u8("game_state") == STATE_GAMEOVER, "standing player crashes into a ground obstacle")
   shot("gameover")
+
+  -- Regression: the crash noise used to be started with the length-counter halt bit set and never
+  -- stopped, also after a restart. Music stops on the crash; the crash effect lasts under 60 frames.
+  check(wait_until(function() return sounding() == "" end, 200), "all sound stops after the crash (sounding: " .. sounding() .. ")")
+  wait(120)
+  check(sounding() == "", "still silent 2 s later (sounding: " .. sounding() .. ")")
 
   check(start_game() and u16("score") == 0, "Start after game over restarts with score 0")
 

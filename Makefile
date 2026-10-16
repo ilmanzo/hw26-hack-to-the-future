@@ -2,12 +2,13 @@ CC = /home/andrea/.local/llvm-mos/bin/mos-nes-nrom-clang
 PYTHON = python3
 
 CFLAGS = -O2 -Isrc -Iassets
-LDFLAGS = -lneslib -lnesdoug
+LDFLAGS = -lneslib -lnesdoug -lfamitone2
 
 TARGET = hacktothefuture.nes
 CHR_ROM = assets/graphics.chr
 
-SRCS = $(wildcard src/*.c) assets/chr-rom.s
+SRCS = $(wildcard src/*.c) assets/chr-rom.s assets/audio.s
+AUDIO = $(wildcard assets/audio/*.s)
 HEADERS = $(wildcard src/*.h)
 
 # Headless tests (Mesen2). libstdc++ preload works around a std::bad_cast abort in MesenCore.so.
@@ -19,7 +20,7 @@ all: $(TARGET)
 $(CHR_ROM): tools/build_chr.py
 	$(PYTHON) tools/build_chr.py $(CHR_ROM)
 
-$(TARGET): $(SRCS) $(HEADERS) $(CHR_ROM)
+$(TARGET): $(SRCS) $(HEADERS) $(CHR_ROM) $(AUDIO)
 	$(CC) $(CFLAGS) $(SRCS) -o $(TARGET) $(LDFLAGS)
 	@echo "[SUCCESS] Built $(TARGET) for NES NROM"
 

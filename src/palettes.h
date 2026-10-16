@@ -29,7 +29,7 @@ static const unsigned char bg_palette[16] = {
 
 // Sprite Palette (4 sub-palettes of 4 colors each)
 static const unsigned char spr_palette[16] = {
-    C_BLACK, C_GEEKO_GREEN, C_MCFLY_ORANGE, C_WHITE,  // 0: Geeko McFly (Green, Orange, White)
+    C_BLACK, C_GEEKO_GREEN, C_DARK_GREEN, C_WHITE,    // 0: Geeko McFly (Light green, Dark green, White)
     C_BLACK, C_DIRT_BROWN, C_MCFLY_ORANGE, C_FIRE_YELLOW, // 1: Tumbleweed / Hazard
     C_BLACK, C_ELECTRIC_BLU, C_PURPLE, C_WHITE,       // 2: Bugs / Cyber Drone
     C_BLACK, C_FIRE_RED, C_MCFLY_ORANGE, C_FIRE_YELLOW // 3: 88 MPH Fire Trail & FX

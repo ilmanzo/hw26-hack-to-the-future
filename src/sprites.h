@@ -4,29 +4,22 @@
 // Metasprite format: dx, dy, tile, attribute (palette, flip, priority)
 // Terminated by 128 (0x80)
 
-// Geeko McFly - Standing / Riding (24x24 px, 9 hardware sprites)
+// Geeko McFly - Standing / Riding (16x16 px, 4 hardware sprites)
 static const unsigned char GeekoRide[] = {
-    0,   0, 0x00, 0,
-    8,   0, 0x01, 0,
-    16,  0, 0x02, 0,
-    0,   8, 0x03, 0,
-    8,   8, 0x04, 0,
-    16,  8, 0x05, 0,
-    0,  16, 0x06, 0,
-    8,  16, 0x07, 0,
-    16, 16, 0x08, 0,
+    0,  0, 0x00, 0,
+    8,  0, 0x01, 0,
+    0,  8, 0x02, 0,
+    8,  8, 0x03, 0,
     128
 };
 
-// Geeko McFly - Crouching / Ducking (24x16 px, 6 hardware sprites)
-// Board must stay at the same height as when riding (dy = 17), so the art starts at dy = 7
+// Geeko McFly - Crouching / Ducking (16x16 px, 4 hardware sprites)
+// Same 16x16 cell as riding: the board is in the same rows, only the body is squashed
 static const unsigned char GeekoDuck[] = {
-    0,   7, 0x09, 0,
-    8,   7, 0x0A, 0,
-    16,  7, 0x0B, 0,
-    0,  15, 0x0C, 0,
-    8,  15, 0x0D, 0,
-    16, 15, 0x0E, 0,
+    0,  0, 0x04, 0,
+    8,  0, 0x05, 0,
+    0,  8, 0x06, 0,
+    8,  8, 0x07, 0,
     128
 };
 

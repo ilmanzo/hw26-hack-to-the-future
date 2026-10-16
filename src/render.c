@@ -16,9 +16,9 @@ static void fire_trail_draw(void) {
     unsigned char py = player_y();
 
     ++fire_trail_frame;
-    oam_meta_spr(GEEKO_X - 12, py + 14, SprFireTrail);
+    oam_meta_spr(GEEKO_X - 12, py + 7, SprFireTrail);
     if (fire_trail_frame & 2) {
-        oam_meta_spr(GEEKO_X - 20, py + 15, SprFireTrail);
+        oam_meta_spr(GEEKO_X - 20, py + 8, SprFireTrail);
     }
 }
 
@@ -28,7 +28,7 @@ void render_all_sprites(unsigned char crashed) {
     oam_set(4);          // Start user sprites at OAM index 4
 
     // OAM order = priority. The PPU drops sprites past 8 per scanline, lowest priority first.
-    // Geeko is 3 tiles wide, so 2 obstacles (2 tiles each) + Geeko + fire trail can exceed 8:
+    // Geeko is 2 tiles wide, so 2 obstacles (2 tiles each) + Geeko + fire trail stay near 8:
     // draw the trail last so the cosmetic sprite is the one that gets dropped.
     obstacles_draw();
     player_draw(crashed);

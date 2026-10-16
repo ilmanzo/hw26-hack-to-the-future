@@ -3,7 +3,7 @@
 
 // Constants and types shared by more than one module.
 
-#define GROUND_Y           148    // Geeko hoverboard ground plane (screen Y of the sprite's top)
+#define GROUND_Y           155    // Geeko hoverboard ground plane (screen Y of the sprite's top)
 #define GEEKO_X            36     // Fixed horizontal screen position
 
 // Axis-aligned collision box. Layout matches what nesdoug's check_collision() reads:

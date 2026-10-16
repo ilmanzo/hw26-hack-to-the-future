@@ -70,15 +70,15 @@ unsigned char player_y(void) {
 void player_get_box(struct Box *box) {
     unsigned char py = player_y();
 
-    box->x = GEEKO_X + 4;  // sprite spans x 0..23; box leaves the rump and snout tip out
-    box->width = 16;
+    box->x = GEEKO_X + 2;  // sprite spans x 0..15; box leaves the tail curl and snout tip out
+    box->width = 12;
 
     if (is_crouched()) {
-        box->y = py + 10;
-        box->height = 10; // Low crouch profile
+        box->y = py + 6;
+        box->height = 10; // Low crouch profile: body rows 5..9 + board
     } else {
-        box->y = py + 2;
-        box->height = 20; // Full standing profile
+        box->y = py + 1;
+        box->height = 15; // Full standing profile: body + board
     }
 }
 
@@ -87,7 +87,7 @@ void player_draw(unsigned char crashed) {
 
     if (crashed) {
         // Crash burst over Geeko
-        oam_meta_spr(GEEKO_X + 12, py + 2, SprCrash);
+        oam_meta_spr(GEEKO_X + 4, py + 2, SprCrash);
         oam_meta_spr(GEEKO_X, py, GeekoDuck);
     } else if (is_crouched()) {
         oam_meta_spr(GEEKO_X, py, GeekoDuck);
