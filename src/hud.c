@@ -53,7 +53,7 @@ void hud_update(void) {
     multi_vram_buffer_horz(buf_spd, 2, NTADR_A(5, 2));
 
     num_to_str5(score, buf_scr);
-    multi_vram_buffer_horz(buf_scr, 5, NTADR_A(15, 2));
+    multi_vram_buffer_horz(buf_scr, 5, NTADR_A(16, 2));
 
     num_to_str5(hi_score, buf_hi);
     multi_vram_buffer_horz(buf_hi, 5, NTADR_A(25, 2));

@@ -24,10 +24,15 @@ $(TARGET): $(SRCS) $(HEADERS) $(CHR_ROM) $(AUDIO)
 	$(CC) $(CFLAGS) $(SRCS) -o $(TARGET) $(LDFLAGS)
 	@echo "[SUCCESS] Built $(TARGET) for NES NROM"
 
+# No local llvm-mos SDK: build inside the Containerfile image.
+podman:
+	podman build -t llvm-mos -f Containerfile .
+	podman run --rm -v "$(CURDIR)":/src:Z llvm-mos make CC=mos-nes-nrom-clang
+
 clean:
 	rm -f $(TARGET) $(CHR_ROM)
 
-# Needs a built ROM (make, or the podman build in AGENTS.md). Exit code 0 = all passed.
+# Needs a built ROM (make, or make podman). Exit code 0 = all passed.
 test:
 	@test -f $(TARGET) || { echo "build $(TARGET) first"; exit 1; }
 	mkdir -p tests/out
@@ -35,4 +40,4 @@ test:
 		--nes.port1.type=NesController --debug.scriptWindow.allowIoOsAccess=true \
 		$(TARGET) tests/smoke.lua
 
-.PHONY: all clean test
+.PHONY: all podman clean test

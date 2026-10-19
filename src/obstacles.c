@@ -43,7 +43,7 @@ static void spawn(struct Obstacle *o) {
     o->width = 12;
 
     if (r == OBS_DRONE) {
-        o->y = 136; // Flying height: must duck!
+        o->y = 147; // Flying height: box y149-158 hits a standing player (y156+), not a ducking one (y161+)
         o->height = 10;
     } else {
         o->y = 154; // Ground height: must jump!

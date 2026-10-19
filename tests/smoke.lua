@@ -5,6 +5,8 @@
 local ROOT = os.getenv("ROOT") or "."
 
 local RAM = emu.memType.nesInternalRam
+local PPU = emu.memType.nesPpuMemory   -- pattern tables at $0000, nametable A at $2000
+local OAM = emu.memType.nesSpriteRam
 local STATE_TITLE, STATE_PLAYING, STATE_GAMEOVER = 0, 1, 2
 local MAX_FRAMES = 4000   -- watchdog
 
@@ -51,6 +53,46 @@ local function sounding()
   return table.concat(out, ",")
 end
 
+-- Characters on screen that have no glyph: text tiles (0x21..0x5F, tile index == ASCII) whose
+-- pattern in the BG pattern table is blank. Returns them as a string.
+local function blank_glyphs()
+  local bad = {}
+  for i = 0, 959 do
+    local t = emu.read(0x2000 + i, PPU)
+    if t > 0x20 and t < 0x60 then
+      local blank = true
+      for b = 0, 15 do
+        if emu.read(t * 16 + b, PPU) ~= 0 then blank = false; break end
+      end
+      if blank then bad[#bad + 1] = string.char(t) end
+    end
+  end
+  return table.concat(bad)
+end
+
+-- Second HUD text row as the PPU shows it (nametable A row 2, columns 1..29).
+local function hud_row()
+  local c = {}
+  for col = 1, 29 do c[#c + 1] = string.char(emu.read(0x2000 + 2 * 32 + col, PPU)) end
+  return table.concat(c)
+end
+
+-- Most sprites OAM puts on one scanline (sprite 0 included). The PPU draws only 8 per scanline
+-- and drops the rest in OAM order, so more than 8 means something vanishes.
+local function max_sprites_per_scanline()
+  local count, max = {}, 0
+  for i = 0, 63 do
+    local y = emu.read(i * 4, OAM)
+    if y < 240 then
+      for line = y + 1, y + 8 do
+        count[line] = (count[line] or 0) + 1
+        if count[line] > max then max = count[line] end
+      end
+    end
+  end
+  return max
+end
+
 local function shot(name)
   local f = io.open(ROOT .. "/tests/out/" .. name .. ".png", "wb")
   if f then f:write(emu.takeScreenshot()); f:close() end
@@ -81,10 +123,35 @@ local function plant(typ, y, h)
 end
 local OBS_BUG, OBS_DRONE = 0, 2
 
+-- Let the game spawn a drone itself (the type is random) and drop it onto the player, keeping the
+-- y the game chose. Other types are discarded.
+local function plant_spawned_drone()
+  for _ = 1, 600 do
+    poke(sym.spawn_timer, 0)
+    wait(1)
+    for slot = 0, 1 do
+      local o = sym.obstacles + slot * 6
+      if emu.read(o + 5, RAM) == 1 then
+        if emu.read(o + 4, RAM) == OBS_DRONE then
+          poke(sym.spawn_timer, 255)
+          poke(o, 46)
+          wait(2)
+          return true
+        end
+        poke(o + 5, 0)
+      end
+    end
+  end
+  return false
+end
+
 local function body()
   wait(30)
   check(u8("game_state") == STATE_TITLE, "boots to title screen")
   check(sounding() == "", "title screen is silent (sounding: " .. sounding() .. ")")
+  local blank = blank_glyphs()
+  check(blank == "", "every character on the title screen has a glyph (blank: '" .. blank .. "')")
+  shot("title")
 
   check(start_game(), "Start begins the game")
   check(u8("mph") == 20, "starts at 20 MPH")
@@ -133,6 +200,9 @@ local function body()
   plant(OBS_BUG, 154, 14)
   check(u8("game_state") == STATE_GAMEOVER, "standing player crashes into a ground obstacle")
   shot("gameover")
+  wait(3)   -- the HUD numbers reach the PPU through the VRAM buffer, one NMI later
+  local want = string.format("SPD:%02dMPH  SCR:%05d HI:%05d", u8("mph"), u16("score"), u16("hi_score"))
+  check(hud_row() == want, "HUD shows the real numbers (screen '" .. hud_row() .. "', want '" .. want .. "')")
 
   -- Regression: the crash noise used to be started with the length-counter halt bit set and never
   -- stopped, also after a restart. Music stops on the crash; the crash effect lasts under 60 frames.
@@ -142,15 +212,44 @@ local function body()
 
   check(start_game() and u16("score") == 0, "Start after game over restarts with score 0")
 
-  -- README: "duck under cyber drones". Standing should hit a drone, ducking should not.
-  plant(OBS_DRONE, 136, 10)
-  xfail(u8("game_state") == STATE_GAMEOVER, "standing player is hit by a drone (README: duck under drones)")
-  if u8("game_state") == STATE_GAMEOVER then start_game() end
+  -- Drones fly at head height: a standing player is hit, a ducking one passes under.
+  check(plant_spawned_drone(), "the game spawns a drone")
+  check(u8("game_state") == STATE_GAMEOVER, "standing player is hit by a drone")
+  wait(3)
+  shot("drone-hit")
+  check(start_game(), "restart after the drone crash")
+  held = {down = true}
+  wait(3)
+  check(plant_spawned_drone(), "the game spawns another drone")
+  check(u8("game_state") == STATE_PLAYING, "ducking player passes under a drone")
+  held = {}
 
   -- natural play: standing still must eventually crash
   poke(sym.spawn_timer, 40)
   check(wait_until(function() return u8("game_state") == STATE_GAMEOVER end, 1500),
         "idle player crashes within 1500 frames")
+
+  -- Worst case for the 8-sprites-per-scanline limit: both obstacle slots at Geeko's height plus
+  -- the 88 MPH fire trail.
+  check(start_game(), "restart for the sprite-limit check")
+  poke(sym.spawn_timer, 255)
+  poke(sym.score, 2720 % 256); poke(sym.score + 1, 2720 // 256)   -- mph is derived from score: 20 + score/40
+  check(wait_until(function() return u8("mph") == 88 end, 10), "reaches 88 MPH")
+  for slot = 0, 1 do
+    for i, v in ipairs({100 + 40 * slot, 154, 12, 14, OBS_BUG, 1}) do poke(sym.obstacles + slot * 6 + i - 1, v) end
+  end
+  wait(3)
+  check(u8("game_state") == STATE_PLAYING, "worst-case scene is still playing")
+  local function worst(frames)   -- the trail's second flame flickers, so look at several frames
+    local m = 0
+    for _ = 1, frames do m = math.max(m, max_sprites_per_scanline()); wait(1) end
+    return m
+  end
+  local most = worst(8)
+  check(most <= 8, "at most 8 sprites per scanline while playing at 88 MPH (found " .. most .. ")")
+  plant(OBS_BUG, 154, 14)
+  most = worst(8)
+  print("INFO  crashed at 88 MPH: " .. most .. " sprites on the busiest scanline")
 end
 
 local co = coroutine.create(body)
