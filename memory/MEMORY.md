@@ -1,4 +1,4 @@
-- [NES game state and decisions](project_nes-game-state.md) — race+hack design, hold B, Mario-style rooms, pending decisions, next = Phase 0
+- [NES game state and decisions](project_nes-game-state.md) — race+hack, no death + 10-minute clock, room 1 draft built, MMC3 decided, what is next
 - [Sibling projects](reference_nes-sibling-projects.md) — where the NES reference projects live, what each is for, licences
 - [Keep docs in sync](feedback_keep-docs-in-sync.md) — update plan.md / DIARY.md / AGENTS.md as work happens; "save plan and memory"
 - [Art and image prompts](feedback_art-and-image-prompts.md) — Geeko head-first design, exact-text prompts, renamed AI agents

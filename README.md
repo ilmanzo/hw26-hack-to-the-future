@@ -11,10 +11,13 @@ The finished game has two halves: the **race** (an endless runner that ends in a
 
 | Piece | State |
 |---|---|
-| Endless runner: road, jump/duck, 3 obstacle types, score, hi-score, 20 → 88 MPH | Works, smoke-tested |
+| Race: road, jump/duck, 3 obstacle types, 20 → 88 MPH in about 60 s; a crash slows you and costs time, never ends the run | Works, smoke-tested |
+| One 10-minute clock for the whole game; game over only when it runs out, with score and rank | Works |
+| Score: speed, dodge streaks (x1 to x5), hacked terminals, clean rooms; ranks NEWBIE to ROOT | Works |
 | HUD with sprite-0 scroll split, FamiTone2 sound effects and a draft music track | Works |
-| 88 MPH time warp | Only a sound for now (speed stops at 88) |
-| Era rooms, terminal hacking, story screens, boss | Not started |
+| 88 MPH time warp: flash, the year rolls, the room appears | Works (draft) |
+| Room 1 (1990): run and jump, hack two terminals (hold `B`), a patrolling drone, the gate | Playable draft, tested by a bot |
+| Other eras, story screens, boss, MMC3 port | Not started |
 
 Known bugs are listed in [`plan.md`](plan.md) section 0.
 
@@ -23,12 +26,15 @@ Known bugs are listed in [`plan.md`](plan.md) section 0.
 | Action | Input |
 |---|---|
 | Jump | `A` or `D-Pad Up` |
-| Duck | `D-Pad Down` |
+| Duck (race) | `D-Pad Down` |
+| Run (room) | `D-Pad Left` / `Right` |
+| Hack a terminal (room) | hold `B` next to it |
 | Start / restart | `Start` or `A` |
+| Jump straight into room 1 (development shortcut on the title screen) | `Select` |
 
 ## Build
 
-The `Makefile` default `CC` is a path on the author's machine. Pass your own `llvm-mos` compiler, or use the container, which has the SDK pinned by version and SHA256.
+The `Makefile` default `CC` is a path on the author's machine. Pass your own `llvm-mos` compiler, or use the container (`make podman`), which has the SDK pinned by version and SHA256.
 
 ```bash
 # Container (podman or docker)
@@ -43,7 +49,7 @@ make clean   # removes the .nes and the generated assets/graphics.chr
 
 The output is `hacktothefuture.nes` (40,976 bytes, iNES 2.0). It runs in any NES emulator (Mesen, FCEUX, Nestopia, RetroArch).
 
-`make test` runs a headless smoke test in [Mesen2](https://www.mesen.ca/) (boot, input, collisions, game over, restart, HUD split). It needs a built ROM and the Mesen path; see [`AGENTS.md`](AGENTS.md).
+`make test` runs headless tests in [Mesen2](https://www.mesen.ca/): the race, clock, score and game over, and a bot that plays room 1. It needs a built ROM and the Mesen path; see [`AGENTS.md`](AGENTS.md).
 
 ## Technical specs
 
