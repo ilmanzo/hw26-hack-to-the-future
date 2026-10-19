@@ -21,6 +21,7 @@
 #define RACE_FRAMES_PER_MPH  53     // +1 MPH per this many frames: 20 -> 88 MPH in about 60 s
 #define CRASH_MPH_LOSS       10     // speed lost on a crash (never below 20)
 #define INVULN_FRAMES        60     // no second hit for this long after a hit (race and rooms)
+#define CRASH_POSE_FRAMES    20     // the race's crash pose and burst last this long after a hit
 
 // Score (plan.md 8a.7). Tuned so that a flawless run is worth about 26,000 points (tests/smoke.lua checks the model).
 #define SCORE_TICK_FRAMES    4      // race: every this many frames the speed adds points
@@ -37,8 +38,14 @@
 #define RANK_3_SCORE         13000  // SYSADMIN
 #define RANK_4_SCORE         21000  // ROOT (below RANK_2_SCORE: NEWBIE)
 
-// Development: on the title screen, SELECT starts room 1 directly (set to 0 for a release build).
-#define DEV_SELECT_ROOM      1
+// Level-select cheat for testing. 1 = on: on the time map LEFT/RIGHT pick any level (the five nodes),
+// A starts its race, SELECT starts its room right away. 0 = off (a release build). Change it before
+// building: make rebuilds by itself, and the tests that need the cheat say so when it is 0.
+#define DEV_LEVEL_SELECT     1
+
+// Invulnerability cheat for testing. 1 = on: Geeko is never hit, in the race or in a room, and blinks
+// all the time. 0 = off (a release build). Change it before building. The tests that hit Geeko need 0.
+#define DEV_INVULNERABLE     0
 
 // The time map shown before each level: it stays this many frames, and A or Start skips it after
 // MAP_SKIP_FRAMES.

@@ -107,11 +107,6 @@ void title_screen_draw(void) {
     vram_adr(NTADR_A(6, 18));
     vram_write("A: JUMP   DOWN: DUCK", 20);
 
-#if DEV_SELECT_ROOM
-    vram_adr(NTADR_A(6, 20));
-    vram_write("SELECT: ROOM TEST (DEV)", 23);
-#endif
-
     ppu_on_all();
 }
 

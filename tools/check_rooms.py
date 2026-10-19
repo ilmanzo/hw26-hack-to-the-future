@@ -36,7 +36,7 @@ IMPULSE = _const(r"#define\s+GEEKO_JUMP\s+(0x[0-9a-fA-F]+|\d+)", "GEEKO_JUMP")
 
 def frames_to_land(rise_px):
     """Frames from take-off until the arc comes back down through height rise_px (None: never gets there).
-    Also returns the apex in px. 8.8 fixed point: vel += gravity; y += vel, like player.c."""
+    Also returns the apex in px. 8.8 fixed point: vel += gravity; y += vel, like geeko.c."""
     y, v, t, apex = 0, -IMPULSE, 0, 0
     while t < 300:
         v += GRAVITY

@@ -62,6 +62,13 @@ function T.geeko(name)
 end
 
 T.failures = 0
+
+-- A test that depends on a build option in src/tuning.h says so, instead of failing in a confusing way.
+function T.needs(name, value)
+  local ok = T.tuning(name) == value
+  T.check(ok, string.format("the tests need %s %d in src/tuning.h (it is %d)", name, value, T.tuning(name)))
+  return ok
+end
 function T.check(cond, msg)
   print((cond and "PASS  " or "FAIL  ") .. msg)
   if not cond then T.failures = T.failures + 1 end
@@ -168,11 +175,20 @@ function T.plant(typ, y, h)
   T.wait(2)
 end
 
--- Room helpers. On the title screen SELECT starts room 1 (DEV_SELECT_ROOM); the title logic runs in
--- any state once game_state is poked back to the title.
-function T.enter_room()
+-- Room helpers. The level-select cheat (DEV_LEVEL_SELECT in src/tuning.h) is how the tests reach a
+-- room: Start opens the time map (the title logic runs in any state once game_state is poked back to
+-- the title), RIGHT picks the era, SELECT starts its room.
+function T.open_map()
   T.poke(sym.game_state, T.STATE.TITLE)
-  T.press({select = true}, 3)
+  T.press({start = true}, 3)
+  return T.wait_until(function() return T.u8("game_state") == T.STATE.MAP end, 10)
+end
+
+function T.enter_room(epoch)
+  assert(T.tuning("DEV_LEVEL_SELECT") == 1, "this test needs DEV_LEVEL_SELECT 1 in src/tuning.h")
+  if not T.open_map() then return false end
+  for _ = 1, epoch or 0 do T.press({right = true}, 2); T.wait(2) end
+  T.press({select = true}, 2)
   return T.wait_until(function() return T.u8("game_state") == T.STATE.ROOM end, 10)
 end
 

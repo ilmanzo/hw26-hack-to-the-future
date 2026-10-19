@@ -25,6 +25,7 @@ local function nodes() -- the first tile of every node: 0xa8 waiting, 0xac done,
 end
 
 local function body()
+  if not T.needs("DEV_LEVEL_SELECT", 1) then return end
   wait(30)
   press({start = true}, 3)
   check(wait_until(function() return u8("game_state") == STATE.MAP end, 10), "Start on the title screen shows the time map")
@@ -60,7 +61,7 @@ local function body()
   check(wait_until(function() return u8("game_state") == STATE.MAP end, 10), "the result card leads to the map")
   wait(3)
   check(nodes() == "ac a8 a8 a8 b0", "the first era is done (" .. nodes() .. ")")
-  check(T.nt_text(10, 19, 12) == "DOT-COM FARM", "the next stop is the 2000 era")
+  check(T.nt_text(8, 19, 15) == " DOT-COM FARM  ", "the next stop is the 2000 era")
   check(geeko_frames_over(2, 32) >= 12, "Geeko blinks over the second era")
   T.shot("map-2")
 
@@ -80,6 +81,34 @@ local function body()
   T.shot("ending")
   press({a = true}, 2)
   check(wait_until(function() return u8("game_state") == STATE.MAP end, 10) and u8("epoch") == 0, "A starts a new game at the first era")
+
+  -- The level-select cheat (DEV_LEVEL_SELECT): LEFT/RIGHT pick a level, A races it, SELECT enters its room.
+  check(T.open_map(), "open the map for the cheat")
+  check(T.nt_text(4, 26, 24) == "LEFT/RIGHT: PICK A LEVEL", "the map shows the cheat's keys")
+  press({right = true}, 2); wait(3)
+  check(u8("epoch") == 1 and nodes() == "ac a8 a8 a8 b0", "RIGHT picks the second era (" .. nodes() .. ")")
+  check(T.nt_text(8, 19, 15) == " DOT-COM FARM  ", "the caption follows (found '" .. T.nt_text(8, 19, 15) .. "')")
+  check(geeko_frames_over(2, 32) >= 12, "Geeko blinks over the picked era")
+  for _ = 1, 4 do press({right = true}, 2); wait(3) end
+  check(u8("epoch") == 4 and nodes() == "ac ac ac ac b0", "RIGHT stops at the boss (epoch " .. u8("epoch") .. ")")
+  press({left = true}, 2); wait(3)
+  press({left = true}, 2); wait(3)
+  check(u8("epoch") == 2 and nodes() == "ac ac a8 a8 b0", "LEFT goes back (" .. nodes() .. ")")
+  check(wait_until(function() return u8("game_state") ~= STATE.MAP end, tuning("MAP_FRAMES") + 20) == false, "a picked level does not time out")
+  T.shot("map-pick")
+  press({a = true}, 2)
+  check(wait_until(function() return u8("game_state") == STATE.PLAYING end, 10), "A races the picked era")
+  wait(3)
+  check(T.nt_text(1, 1, 25) == "TIME " .. T.nt_text(6, 1, 5) .. "  YEAR 2000  X1", "the race is in the era's year (found '" .. T.nt_text(1, 1, 25) .. "')")
+  check(T.enter_room(3), "SELECT enters the room of the fourth era")
+  wait(3)
+  check(u8("epoch") == 3 and T.nt_text(1, 1, 25) == "TIME 10:00  YEAR 2020  X1", "room of 2020 (found '" .. T.nt_text(1, 1, 25) .. "')")
+  check(T.open_map(), "open the map again")
+  for _ = 1, 4 do press({right = true}, 2); wait(3) end
+  press({select = true}, 2)
+  check(wait_until(function() return u8("game_state") == STATE.GAMEOVER end, 10), "SELECT on the boss ends the game")
+  wait(3)
+  check(T.nt_text(8, 6, 15) == "TO BE CONTINUED", "the boss is not built: TO BE CONTINUED")
 end
 
-T.run(body, 3000)
+T.run(body, 4000)

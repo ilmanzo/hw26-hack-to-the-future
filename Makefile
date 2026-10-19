@@ -37,7 +37,7 @@ clean:
 	rm -f $(TARGET) $(CHR_ROM) $(ROOMS_H)
 
 # Needs a built ROM (make, or make podman). Exit code 0 = all passed.
-TESTS = tests/smoke.lua tests/room.lua tests/map.lua tests/sprites.lua
+TESTS = tests/smoke.lua tests/room.lua tests/map.lua tests/sprites.lua tests/cheats.lua
 
 test:
 	@test -f $(TARGET) || { echo "build $(TARGET) first"; exit 1; }

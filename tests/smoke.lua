@@ -45,6 +45,7 @@ local player = T.geeko("player")
 local function wait_vulnerable() wait_until(function() return u8("invuln") == 0 end, 200) end
 
 local function body()
+  if not T.needs("DEV_INVULNERABLE", 0) then return end
   wait(30)
   check(u8("game_state") == STATE.TITLE, "boots to title screen")
   check(T.sounding() == "", "title screen is silent (sounding: " .. T.sounding() .. ")")

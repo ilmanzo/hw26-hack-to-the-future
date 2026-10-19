@@ -19,6 +19,14 @@ static unsigned char mph_sub = 0;     // frames since the last +1 MPH
 static unsigned char score_sub = 0;   // frames since the last speed points
 static unsigned char streak = 0;      // obstacles passed in a row
 
+// Invulnerability when nothing hit Geeko: none, or with the cheat a blink that never ends (below the
+// crash pose, so Geeko does not show the burst all the time).
+#if DEV_INVULNERABLE
+#define INVULN_IDLE (INVULN_FRAMES - CRASH_POSE_FRAMES)
+#else
+#define INVULN_IDLE 0
+#endif
+
 static void speed_update(void) {
     speed_px = 2 + mph / 25;
 }
@@ -39,7 +47,7 @@ void race_start(void) {
     score_sub = 0;
     streak = 0;
     mult = 1;
-    invuln = 0;
+    invuln = INVULN_IDLE;
     race_frames = 0;
     speed_update();
 }
@@ -75,7 +83,7 @@ void progress_crash(void) {
 }
 
 void progress_room_start(void) {
-    invuln = 0;
+    invuln = INVULN_IDLE;
 }
 
 void progress_dodge(void) {
@@ -106,6 +114,7 @@ void clock_sub(unsigned char seconds) {
 
 unsigned char clock_tick(void) {
     if (invuln) --invuln;
+    if (!invuln) invuln = INVULN_IDLE;
     if (time_left) --time_left;
     return time_left != 0;
 }

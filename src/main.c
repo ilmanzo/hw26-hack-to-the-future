@@ -44,7 +44,6 @@
 #define SCENE_ROOM         1
 #define SCENE_BLANK        2   // none: cards, the ending
 
-#define CRASH_POSE_FRAMES  20   // the crash pose and burst last this long after a hit
 #define WARP_FLASH_FRAMES  30   // brightening; then as long again (plus a bit) to fade back
 
 // ROM image: 64 KB of PRG (the MMC3 linker script needs more than 32), one 8 KB tileset.
@@ -55,6 +54,7 @@ static unsigned char game_state = STATE_TITLE;
 static unsigned char scene;           // SCENE_*
 static unsigned char warp_timer;
 static unsigned char map_timer;
+static unsigned char map_picked;      // the level-select cheat moved the selection: no timeout
 
 // A fresh race: playfield, Geeko, obstacles, 20 MPH. Score and clock carry over.
 static void race_begin(void) {
@@ -76,6 +76,7 @@ static void race_begin(void) {
 static void map_begin(void) {
     year_idx = epoch;
     map_timer = 0;
+    map_picked = 0;
     scene = SCENE_BLANK;
     map_show(epoch);
     game_state = STATE_MAP;
@@ -108,15 +109,6 @@ static void state_title(unsigned char pad_new) {
         seed_rng();
         session_start();
     }
-#if DEV_SELECT_ROOM
-    else if (pad_new & PAD_SELECT) {   // playtest: straight into the room
-        seed_rng();
-        progress_reset();
-        sfx_music_start();
-        room_begin();
-        game_state = STATE_ROOM;
-    }
-#endif
 }
 
 static void state_playing(unsigned char pad, unsigned char pad_new) {
@@ -188,19 +180,42 @@ static void state_result(unsigned char pad_new) {
     }
 }
 
-// The map stays MAP_FRAMES (A or Start skips it after MAP_SKIP_FRAMES), then the race starts. The
-// boss is not built yet: its map ends the game with TO BE CONTINUED.
+// Leave the map for the era `epoch`: its race, or (the cheat) its room. The boss is not built yet:
+// its map ends the game with TO BE CONTINUED.
+static void map_leave(unsigned char to_room) {
+    if (epoch >= 4) {
+        scene = SCENE_BLANK;
+        game_over_begin(1);
+    } else if (to_room) {
+        room_begin();
+        game_state = STATE_ROOM;
+    } else {
+        race_begin();
+        game_state = STATE_PLAYING;
+    }
+}
+
+// The map stays MAP_FRAMES (A or Start skips it after MAP_SKIP_FRAMES), then the race starts. With
+// DEV_LEVEL_SELECT, LEFT/RIGHT move the selection (and stop the timeout) and SELECT starts the room.
 static void state_map(unsigned char pad_new) {
-    ++map_timer;
+    if (map_timer < 255) ++map_timer;     // stays on the map as long as the cheat's picker wants
     hud_update(0, 0, 0);
-    if (map_timer >= MAP_FRAMES || (map_timer >= MAP_SKIP_FRAMES && (pad_new & (PAD_START | PAD_A)))) {
-        if (epoch >= 4) {
-            scene = SCENE_BLANK;
-            game_over_begin(1);
-        } else {
-            race_begin();
-            game_state = STATE_PLAYING;
-        }
+#if DEV_LEVEL_SELECT
+    if (pad_new & (PAD_LEFT | PAD_RIGHT)) {
+        if ((pad_new & PAD_RIGHT) && epoch < 4) ++epoch;
+        if ((pad_new & PAD_LEFT) && epoch > 0) --epoch;
+        year_idx = epoch;
+        map_select(epoch);
+        hud_year_show(year_value(epoch));
+        map_picked = 1;
+    }
+    if (pad_new & PAD_SELECT) {
+        map_leave(1);
+        return;
+    }
+#endif
+    if ((!map_picked && map_timer >= MAP_FRAMES) || (map_timer >= MAP_SKIP_FRAMES && (pad_new & (PAD_START | PAD_A)))) {
+        map_leave(0);
     }
 }
 

@@ -16,6 +16,7 @@ local function report(scene, found, bound)   -- bound: what the scene can add up
 end
 
 local function body()
+  if not (T.needs("DEV_INVULNERABLE", 0) and T.needs("DEV_LEVEL_SELECT", 1)) then return end
   wait(30)
   check(T.start_game(), "start a game")
   poke(T.sym.mph, 80)                                  -- fast, but under 88: no fire trail in the race

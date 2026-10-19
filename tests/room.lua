@@ -1,5 +1,5 @@
 -- Headless test of room 1 (1990) for Mesen2 (--testRunner). Run with `make test`.
--- On the title screen SELECT jumps straight into the room (DEV_SELECT_ROOM in src/tuning.h).
+-- The level-select cheat on the time map (DEV_LEVEL_SELECT in src/tuning.h) starts the room.
 -- Part 1 tests the pieces by teleporting Geeko (movement numbers, collision, hacking, the drone,
 -- the gate, the result card); part 2 plays the whole room with a small bot that reads Geeko's and
 -- the drone's position from RAM.
@@ -22,10 +22,10 @@ local PENALTY = tuning("HIT_TIME_PENALTY_S") * 60
 local enter_room, hold_b_until = T.enter_room, T.hold_b_until
 
 local function body()
+  if not (T.needs("DEV_INVULNERABLE", 0) and T.needs("DEV_LEVEL_SELECT", 1)) then return end
   wait(30)
   check(u8("game_state") == STATE.TITLE, "boots to title screen")
-  check(T.nt_text(6, 20, 23) == "SELECT: ROOM TEST (DEV)", "the title screen offers the room test")
-  check(enter_room(), "SELECT on the title screen starts room 1")
+  check(enter_room(), "the level-select cheat starts room 1 from the map")
   wait(3)
   check(T.nt_text(1, 2, 8) == "HACK 0/2", "HUD row 2 shows HACK 0/2 (found '" .. T.nt_text(1, 2, 8) .. "')")
   check(T.nt_text(1, 1, 25) == "TIME 10:00  YEAR 1990  X1", "HUD row 1 shows the clock and 1990 (found '" .. T.nt_text(1, 1, 25) .. "')")
