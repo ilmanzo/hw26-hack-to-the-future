@@ -33,11 +33,16 @@ clean:
 	rm -f $(TARGET) $(CHR_ROM)
 
 # Needs a built ROM (make, or make podman). Exit code 0 = all passed.
+TESTS = tests/smoke.lua
+
 test:
 	@test -f $(TARGET) || { echo "build $(TARGET) first"; exit 1; }
 	mkdir -p tests/out
-	ROOT=$(CURDIR) LD_PRELOAD=$(MESEN_PRELOAD) timeout 180 $(MESEN) --testRunner \
-		--nes.port1.type=NesController --debug.scriptWindow.allowIoOsAccess=true \
-		$(TARGET) tests/smoke.lua
+	@for t in $(TESTS); do \
+		echo "== $$t"; \
+		ROOT=$(CURDIR) LD_PRELOAD=$(MESEN_PRELOAD) timeout 300 $(MESEN) --testRunner \
+			--nes.port1.type=NesController --debug.scriptWindow.allowIoOsAccess=true \
+			$(TARGET) $$t || exit 1; \
+	done
 
 .PHONY: all podman clean test

@@ -10,7 +10,8 @@ void background_draw(unsigned int base_addr);
 // Turns rendering off, draws the title screen, turns rendering back on.
 void title_screen_draw(void);
 
-// Queue the CRASH banner through the VRAM buffer (safe while rendering).
-void crash_banner_show(void);
+// Queue the game-over text (GAME OVER, score, rank, PRESS A TO RESTART) over the sky through the
+// direct writes (turns rendering off and on again).
+void game_over_show(void);
 
 #endif // SCREENS_H

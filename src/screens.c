@@ -2,6 +2,7 @@
 #include <nesdoug.h>
 
 #include "hud.h"
+#include "progress.h"
 #include "screens.h"
 
 // Background tiles (pattern table 0, see tools/build_chr.py)
@@ -109,7 +110,21 @@ void title_screen_draw(void) {
     ppu_on_all();
 }
 
-void crash_banner_show(void) {
-    multi_vram_buffer_horz(" CRASH! ", 8, NTADR_A(12, 10));
-    multi_vram_buffer_horz("PRESS START", 11, NTADR_A(10, 12));
+void game_over_show(void) {
+    static char buf[5];
+
+    // Rendering off: this is more text than the VRAM buffer can flush in one vblank.
+    ppu_off();
+    vram_adr(NTADR_A(11, 6));
+    vram_write("GAME OVER", 9);
+    vram_adr(NTADR_A(10, 8));
+    vram_write("SCORE ", 6);
+    hud_num5(score, buf);
+    vram_write(buf, 5);
+    vram_adr(NTADR_A(7, 9));
+    vram_write("RANK ", 5);
+    vram_write(rank_name(), 13);
+    vram_adr(NTADR_A(7, 11));
+    vram_write("PRESS A TO RESTART", 18);
+    ppu_on_all();
 }

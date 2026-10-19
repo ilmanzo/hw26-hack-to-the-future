@@ -21,14 +21,16 @@
 #include "render.h"
 #include "screens.h"
 #include "sfx.h"
+#include "tuning.h"
 
 #define STATE_TITLE        0
 #define STATE_PLAYING      1
 #define STATE_GAMEOVER     2
+#define CRASH_POSE_FRAMES  20   // the crash pose and burst last this long after a hit
 
 static unsigned char game_state = STATE_TITLE;
 
-// Reset every module and draw a fresh playfield.
+// A new game: score 0, full clock, fresh playfield, music.
 static void session_start(void) {
     player_reset();
     progress_reset();
@@ -37,7 +39,7 @@ static void session_start(void) {
     ppu_off();
     background_draw(NTADR_A(0, 0));
     background_draw(NTADR_B(0, 0)); // Second nametable for seamless scroll
-    hud_draw_static();
+    hud_draw_static(0);
     ppu_on_all();
 
     sfx_music_start();
@@ -59,16 +61,23 @@ static void state_playing(unsigned char pad, unsigned char pad_new) {
     progress_update();
     obstacles_update();
 
-    player_get_box(&player_box);
-    if (obstacles_hit(&player_box)) {
-        sfx_music_stop();
-        sfx_crash();
-        game_state = STATE_GAMEOVER;
-        progress_game_over();
-        crash_banner_show();
+    // A hit slows Geeko and costs time; it never ends the run. No second hit while invulnerable.
+    if (invuln == 0) {
+        player_get_box(&player_box);
+        if (obstacles_hit(&player_box)) {
+            progress_crash();
+            sfx_crash();
+        }
     }
 
-    hud_update();
+    if (!clock_tick()) {
+        sfx_music_stop();
+        game_state = STATE_GAMEOVER;
+        progress_game_over();
+        game_over_show();
+    }
+
+    hud_update(0, 0, 0);
 }
 
 static void state_gameover(unsigned char pad_new) {
@@ -112,6 +121,6 @@ int main(void) {
             state_gameover(pad_new);
         }
 
-        render_all_sprites(game_state == STATE_GAMEOVER);
+        render_all_sprites(game_state == STATE_PLAYING && invuln > INVULN_FRAMES - CRASH_POSE_FRAMES);
     }
 }

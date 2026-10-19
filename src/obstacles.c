@@ -20,6 +20,8 @@ struct Obstacle {
     unsigned char height;
     unsigned char type;
     unsigned char active;
+    unsigned char hit;      // it hit Geeko: no dodge points when it passes
+    unsigned char scored;   // already counted as passed
 };
 
 static struct Obstacle obstacles[MAX_OBSTACLES];
@@ -38,6 +40,8 @@ static void spawn(struct Obstacle *o) {
     unsigned char r = rand8() % 3;
 
     o->active = 1;
+    o->hit = 0;
+    o->scored = 0;
     o->x = 240;
     o->type = r;
     o->width = 12;
@@ -79,6 +83,11 @@ void obstacles_update(void) {
             } else {
                 obstacles[i].x -= speed_px;
             }
+            // Passed Geeko (right edge left of Geeko's x): a dodge unless it hit.
+            if (obstacles[i].active && !obstacles[i].scored && obstacles[i].x + 16 < GEEKO_X) {
+                obstacles[i].scored = 1;
+                if (!obstacles[i].hit) progress_dodge();
+            }
         }
     }
 }
@@ -95,6 +104,7 @@ unsigned char obstacles_hit(const struct Box *box) {
             obox.height = obstacles[i].height;
 
             if (check_collision((void *)box, &obox)) {
+                obstacles[i].hit = 1;
                 return 1;
             }
         }

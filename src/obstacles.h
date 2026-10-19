@@ -10,7 +10,7 @@ void obstacles_reset(void);
 // One frame: spawn countdown and spawning, then move every active obstacle left.
 void obstacles_update(void);
 
-// 1 if any active obstacle overlaps the box.
+// 1 if any active obstacle overlaps the box (that obstacle then gives no dodge points).
 unsigned char obstacles_hit(const struct Box *box);
 
 void obstacles_draw(void);

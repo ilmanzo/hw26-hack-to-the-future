@@ -1,57 +1,117 @@
 #include "progress.h"
 #include "sfx.h"
+#include "tuning.h"
 
 unsigned int  scroll_x = 0;
 unsigned char speed_px = 2;
 unsigned char mph = MPH_START;
 unsigned int  score = 0;
 unsigned int  hi_score = 0;
+unsigned int  dodges = 0;
+unsigned char mult = 1;
+unsigned int  time_left = GAME_TIME_S * 60u;
+unsigned char invuln = 0;
+unsigned char year_idx = 0;
 
-static unsigned char score_sub = 0;         // frames since the last score tick
-static unsigned char warp_flash_timer = 0;  // set at 88 MPH; the flash itself is not implemented yet
+static unsigned char mph_sub = 0;     // frames since the last +1 MPH
+static unsigned char score_sub = 0;   // frames since the last speed points
+static unsigned char streak = 0;      // obstacles passed in a row
+
+static void speed_update(void) {
+    speed_px = 2 + mph / 25;
+}
 
 void progress_reset(void) {
-    scroll_x = 0;
-    speed_px = 2;
-    mph = MPH_START;
-
     score = 0;
+    dodges = 0;
+    time_left = GAME_TIME_S * 60u;
+    year_idx = 0;
+    race_start();
+}
+
+void race_start(void) {
+    scroll_x = 0;
+    mph = MPH_START;
+    mph_sub = 0;
     score_sub = 0;
-    warp_flash_timer = 0;
+    streak = 0;
+    mult = 1;
+    invuln = 0;
+    speed_update();
 }
 
 void progress_update(void) {
     scroll_x += speed_px;
+    if (invuln) --invuln;
 
-    ++score_sub;
-    if (score_sub >= 4) {
-        score_sub = 0;
-        ++score;
-
-        // Milestone ping every 100 points
-        if (score % 100 == 0) {
-            sfx_beep();
-        }
-
-        // Speed calculation: 20 MPH -> 88 MPH
-        mph = MPH_START + (score / 40);
-        if (mph > MPH_WARP) {
-            mph = MPH_WARP;
-        }
-
-        // Warp trigger at 88 MPH
-        if (mph == MPH_WARP && warp_flash_timer == 0) {
-            warp_flash_timer = 30;
-            sfx_warp();
-        }
-
-        // Pixel scroll speed
-        speed_px = 2 + (mph / 25);
+    if (mph < MPH_WARP && ++mph_sub >= RACE_FRAMES_PER_MPH) {
+        mph_sub = 0;
+        ++mph;
+        speed_update();
     }
+
+    if (++score_sub >= SCORE_TICK_FRAMES) {
+        score_sub = 0;
+        score_add(mph / SCORE_SPEED_DIV);
+    }
+}
+
+void progress_crash(void) {
+    mph = mph > MPH_START + CRASH_MPH_LOSS ? mph - CRASH_MPH_LOSS : MPH_START;
+    mph_sub = 0;
+    speed_update();
+    streak = 0;
+    mult = 1;
+    invuln = INVULN_FRAMES;
+    clock_sub(HIT_TIME_PENALTY_S);
+}
+
+void progress_dodge(void) {
+    unsigned char m;
+
+    ++dodges;
+    ++streak;
+    m = 1 + streak / DODGE_STREAK_STEP;
+    if (m > MULT_MAX) m = MULT_MAX;
+    if (m > mult) sfx_beep();
+    mult = m;
+    score_add((unsigned int)DODGE_POINTS * mult);
+}
+
+void score_add(unsigned int points) {
+    score = (unsigned int)(score + points) < score ? 0xffff : score + points;
+}
+
+void clock_add(unsigned char seconds) {
+    time_left += seconds * 60u;
+    if (time_left > TIME_MAX_S * 60u) time_left = TIME_MAX_S * 60u;
+}
+
+void clock_sub(unsigned char seconds) {
+    unsigned int d = seconds * 60u;
+    time_left = time_left > d ? time_left - d : 0;
+}
+
+unsigned char clock_tick(void) {
+    if (time_left) --time_left;
+    return time_left != 0;
 }
 
 void progress_game_over(void) {
     if (score > hi_score) {
         hi_score = score;
     }
+}
+
+const char *rank_name(void) {
+    if (score >= RANK_4_SCORE) return "ROOT         ";
+    if (score >= RANK_3_SCORE) return "SYSADMIN     ";
+    if (score >= RANK_2_SCORE) return "SCRIPT KIDDIE";
+    return "NEWBIE       ";
+}
+
+const char *year_text(void) {
+    static const char years[][4] = { {'1','9','8','5'}, {'1','9','9','0'}, {'2','0','0','0'},
+                                     {'2','0','1','0'}, {'2','0','2','0'} };
+    return years[year_idx];
 }

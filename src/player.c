@@ -2,6 +2,7 @@
 #include <nesdoug.h>
 
 #include "player.h"
+#include "progress.h"
 #include "sfx.h"
 #include "sprites.h"
 
@@ -84,6 +85,10 @@ void player_get_box(struct Box *box) {
 
 void player_draw(unsigned char crashed) {
     unsigned char py = player_y();
+
+    if (!crashed && invuln && ((invuln >> 2) & 1)) {
+        return;     // blink while invulnerable
+    }
 
     if (crashed) {
         // Crash burst over Geeko
