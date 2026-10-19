@@ -3,6 +3,7 @@
 *.nes.elf
 *.mlb
 assets/graphics.chr
+assets/rooms.h
 __pycache__/
 
 # test output (screenshots)

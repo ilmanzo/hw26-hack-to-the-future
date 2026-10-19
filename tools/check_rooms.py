@@ -5,8 +5,8 @@
     python3 tools/check_rooms.py -v     # also print each map as ASCII
 
 Rooms are rectangles (row0, row1, col0, col1, inclusive, tile units) plus object lists: the input
-format of the future tools/build_rooms.py (plan.md step 4.1a), which will expand them into
-nametables. This script is a model of the jump, not the emulator: a recorded-input playthrough is
+format of tools/build_rooms.py, which turns the playable rooms into assets/rooms.h for the game.
+This script is a model of the jump, not the emulator: a recorded-input playthrough is
 still the proof. The jump numbers come from src/player.c (same fixed-point order), with one tile
 (8 px) of margin everywhere.
 """
@@ -63,6 +63,7 @@ def max_gap(rise):
 class Room:
     def __init__(self, name, rects, terminals, gate, start, foes=()):
         self.name, self.terminals, self.gate, self.start, self.foes = name, terminals, gate, start, foes
+        self.rects_list = list(rects)
         self.solid = [[False] * W for _ in range(H)]
         for r0, r1, c0, c1 in rects:
             for r in range(r0, r1 + 1):
@@ -162,8 +163,8 @@ class Room:
                     g[r - dr][c + dc] = "G"
         r, c = self.start
         g[r - 1][c] = "S"
-        for ch, r, c in self.foes:
-            g[r][c] = ch
+        for foe in self.foes:
+            g[foe[1]][foe[2]] = foe[0]
         first = next(r for r in range(3, H) if set(g[r]) != {"."})
         out = ["    " + "".join(str(c % 10) for c in range(W))]
         out += [f"{r:2d}  " + "".join(g[r]) for r in range(max(3, first - 1), H)]
@@ -171,11 +172,12 @@ class Room:
 
 
 FL = (FLOOR, 29, 0, 31)
-# foes: (letter, row, col) = where a foe starts; behaviour and range are in plan.md 8a.5
+# foes: (letter, row, col, ...) = where a foe starts; behaviour and range are in plan.md 8a.5. A drone
+# 'd' is (letter, row, first col, last col): it patrols that span at 0.5 px/frame.
 ROOMS = [
     Room("1990 UNIX Labs", [FL, (22, 22, 3, 9), (18, 18, 12, 21), (22, 22, 24, 29)],
          terminals=[(18, 16), (22, 26)], gate=(26, 0, 2), start=(26, 10),
-         foes=[("d", 24, 14)]),
+         foes=[("d", 23, 14, 22)]),
     Room("2000 Dot-com farm", [FL, (23, 25, 9, 10), (23, 25, 24, 25), (22, 22, 1, 6), (18, 18, 8, 15),
                                (22, 22, 17, 22), (18, 18, 26, 30)],
          terminals=[(22, 3), (18, 11), (18, 28)], gate=(26, 29, 2), start=(26, 7),

@@ -27,6 +27,14 @@ static const unsigned char bg_palette[16] = {
     C_BLACK, C_DARK_GRAY, C_ELECTRIC_BLU, C_WHITE     // 3: HUD / Accents
 };
 
+// Room background palette (room 1, 1990): solid brick and bar, terminals, gate, text
+static const unsigned char room_bg_palette[16] = {
+    C_BLACK, 0x06, C_FIRE_RED, C_WHITE,               // 0: brick (mortar, brick, highlight), hack bar, text
+    C_BLACK, C_CYBER_BLUE, C_PURPLE, 0x2a,            // 1: terminals (dark blue, blue, green)
+    C_BLACK, C_FIRE_RED, C_MCFLY_ORANGE, 0x2a,        // 2: gate (red, orange, green)
+    C_BLACK, C_DARK_GRAY, C_ELECTRIC_BLU, C_WHITE     // 3: spare
+};
+
 // Sprite Palette (4 sub-palettes of 4 colors each)
 static const unsigned char spr_palette[16] = {
     C_BLACK, C_GEEKO_GREEN, C_DARK_GREEN, C_WHITE,    // 0: Geeko McFly (Light green, Dark green, White)

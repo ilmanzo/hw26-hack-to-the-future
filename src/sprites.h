@@ -23,6 +23,23 @@ static const unsigned char GeekoDuck[] = {
     128
 };
 
+// The same two poses facing left: tiles mirrored in place (flip attribute 0x40, columns swapped)
+static const unsigned char GeekoRideL[] = {
+    8,  0, 0x00, 0x40,
+    0,  0, 0x01, 0x40,
+    8,  8, 0x02, 0x40,
+    0,  8, 0x03, 0x40,
+    128
+};
+
+static const unsigned char GeekoDuckL[] = {
+    8,  0, 0x04, 0x40,
+    0,  0, 0x05, 0x40,
+    8,  8, 0x06, 0x40,
+    0,  8, 0x07, 0x40,
+    128
+};
+
 // Obstacle 1: Software Bug / Glitch (16x16 px, palette 2)
 static const unsigned char SprBug[] = {
     0, 0, 0x10, 2,

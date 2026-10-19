@@ -243,6 +243,53 @@ def make_bg_table():
         "*       "
     ])
 
+    # --- Room tiles (plan.md 8a.3): tile classes by index: 0xC0-0xDF solid, others decor ---
+    # 0x01-0x09: hack progress bar, 0..8 pixels filled (colour 3) over a track (colour 1)
+    for k in range(9):
+        band = ''.join('3' if x < k else '1' for x in range(8))
+        tiles[0x01 + k] = encode_tile(["        ", "        ", band, band, band, band, "        ", "        "])
+
+    # 0xC0 / 0xC1: solid brick (palette 0 of the room: 1 mortar, 2 brick, 3 highlight); 0xC0 has a lit top edge
+    brick = ["22222221", "22222221", "22222221", "11111111", "22122222", "22122222", "22122222", "11111111"]
+    tiles[0xC1] = encode_tile(brick)
+    tiles[0xC0] = encode_tile(["33333333", "22222221"] + brick[2:])
+
+    # 0x90-0x93 terminal waiting (blue screen), 0x94-0x97 hacked (green screen, dark prompt);
+    # 2x2 tiles, row-major (palette 1 of the room: 1 dark blue, 2 blue, 3 green)
+    def terminal(fill):
+        prompt = [(1, 2), (3, 4), (5, 6), (3, 4), (1, 2, 8, 9, 10)]   # a '>' and a '_'
+        art = ["                ", "  111111111111  ", " 11" + fill * 10 + "11 "]
+        for cols in prompt:
+            line = [fill] * 12
+            for c in cols:
+                line[c] = '1'
+            art.append(" 1" + ''.join(line) + "1 ")
+        art += [" 11" + fill * 10 + "11 ", "  111111111111  ", "     111111     ", "    11111111    ",
+                "   1111111111   ", "   1  1  1  1   ", "                ", "                "]
+        assert len(art) == 16 and all(len(r) == 16 for r in art)
+        return art
+    put_sprite(tiles, 0x90, terminal('2'))
+    put_sprite(tiles, 0x94, terminal('3'))
+
+    # 0x98-0x9D gate closed (red and orange bars), 0x9E-0xA3 gate open (green arrow); 2 wide, 3 tall
+    # (palette 2 of the room: 1 red, 2 orange, 3 green)
+    def gate(open_):
+        art = []
+        for r in range(24):
+            if r in (0, 23):
+                art.append("1111111111111111")
+            elif open_:
+                inner = [' '] * 12
+                if r in (9, 13): inner[5] = '3'
+                if r in (10, 12): inner[5] = inner[6] = '3'
+                if r == 11: inner[1:8] = ['3'] * 7
+                art.append("11" + ''.join(inner) + "11")
+            else:
+                art.append("11" + (("22" * 6) if r % 4 in (1, 2) else ' ' * 12) + "11")
+        return art
+    put_sprite(tiles, 0x98, gate(False))
+    put_sprite(tiles, 0x9E, gate(True))
+
     return b''.join(tiles)
 
 def make_spr_table():
