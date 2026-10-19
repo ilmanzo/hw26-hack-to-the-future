@@ -7,13 +7,10 @@ local T = dofile((os.getenv("ROOT") or ".") .. "/tests/lib.lua")
 local sym, u8, u16, poke, check = T.sym, T.u8, T.u16, T.poke, T.check
 local wait, press, wait_until, tuning, STATE = T.wait, T.press, T.wait_until, T.tuning, T.STATE
 
-local function s16(name) local v = u16(name); return v >= 32768 and v - 65536 or v end
-local function hx() return u16("hx") / 256 end
-local function hy() return u16("hy") / 256 end
-local function teleport(x, y)
-  T.poke16("hx", math.floor(x * 256)); T.poke16("hy", math.floor(y * 256))
-  T.poke16("hvx", 0); T.poke16("hvy", 0)
-end
+local hero = T.geeko("hero")
+local function hx() return hero.x() / 256 end
+local function hy() return hero.y() / 256 end
+local teleport = hero.teleport
 local function foe_x() return u16("foe_x") / 256 end
 local function term_prog(i) return emu.read(sym.term_prog + i, T.RAM) end
 local function hacked() return T.nt_text(6, 2, 1) end     -- the digit in "HACK 0/2"
@@ -52,19 +49,19 @@ local function body()
   -- Movement numbers (plan 4a): about 22 frames to full speed, about 32 to stop, jump apex about 49 px.
   local frames = 0
   T.hold({left = true})
-  wait_until(function() frames = frames + 1; return s16("hvx") <= -0x200 end, 60)
+  wait_until(function() frames = frames + 1; return hero.vx() <= -0x200 end, 60)
   check(frames >= 21 and frames <= 23, "full speed after about 22 frames (" .. frames .. ")")
   local x0 = hx()
   T.hold({})
   frames = 0
-  wait_until(function() frames = frames + 1; return s16("hvx") == 0 end, 60)
+  wait_until(function() frames = frames + 1; return hero.vx() == 0 end, 60)
   local dist = x0 - hx()
   check(frames >= 31 and frames <= 34 and dist >= 27 and dist <= 35, "stops in about 32 frames and 31 px (" .. frames .. " frames, " .. string.format("%.1f", dist) .. " px)")
   T.hold({left = true})
   wait(60)
   T.hold({})
   wait(3)
-  check(hx() == 0 and s16("hvx") == 0, "the left screen edge is a wall (x " .. hx() .. ")")
+  check(hx() == 0 and hero.vx() == 0, "the left screen edge is a wall (x " .. hx() .. ")")
 
   teleport(120, 192)    -- the drone is at 112+ on the floor: stay clear of it by jumping near the start instead
   wait(2)
@@ -75,7 +72,7 @@ local function body()
   for _ = 1, 70 do wait(1); top = math.min(top, hy()) end
   T.hold({})
   check(192 - top >= 47 and 192 - top <= 51, "a full jump rises about 49 px (" .. (192 - top) .. ")")
-  wait_until(function() return u8("grounded") == 1 end, 60)
+  wait_until(function() return hero.grounded() == 1 end, 60)
   check(hy() == 192, "lands back on the floor")
   wait(3)                                   -- A must be seen released first, or there is no new press
   top = 192
@@ -94,7 +91,7 @@ local function body()
   wait(30)
   teleport(40, 100)
   wait(60)
-  check(math.floor(hy()) == 160 and u8("grounded") == 1, "Geeko lands on the platform (y " .. hy() .. ")")
+  check(math.floor(hy()) == 160 and hero.grounded() == 1, "Geeko lands on the platform (y " .. hy() .. ")")
 
   -- The drone: a touch costs time, knocks Geeko back, starts the invulnerability.
   wait(2)
@@ -160,16 +157,16 @@ local function body()
   local function walk_to(x, tol, max)       -- run to x, braking early enough to stop on it (about 8 v^2 px)
     for _ = 1, max or 240 do
       local d = x - hx()
-      local v = math.abs(s16("hvx")) / 256
+      local v = math.abs(hero.vx()) / 256
       if math.abs(d) <= tol and v < 0.3 then T.hold({}); return true end
-      if (d > 0) == (s16("hvx") >= 0) and math.abs(d) <= 8 * v * v + tol then
+      if (d > 0) == (hero.vx() >= 0) and math.abs(d) <= 8 * v * v + tol then
         T.hold({})                           -- coast
       elseif d > 0 then T.hold({right = true}) else T.hold({left = true}) end
       wait(1)
     end
     T.hold({}); return false
   end
-  local function on_surface(y) return math.floor(hy()) == y and u8("grounded") == 1 end
+  local function on_surface(y) return math.floor(hy()) == y and hero.grounded() == 1 end
 
   check(enter_room(), "bot: start the room again")
   wait(3)

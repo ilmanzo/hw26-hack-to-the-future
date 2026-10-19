@@ -41,6 +41,24 @@ function T.tuning(name)
   return tuning[name]
 end
 
+-- A struct Geeko (src/geeko.h) in RAM. The label file lists a struct field by field (name.0 = x,
+-- .1 = y, .2 = vx, .3 = vy, .4 = grounded, .5 = facing_left); the compiler drops fields a level never
+-- uses (the race has no vx and no facing), so a missing field reads as nil.
+-- T.geeko("player") is the race, T.geeko("hero") a room. x and y are 8.8 fixed point.
+function T.geeko(name)
+  local function addr(i) return sym[name .. "." .. i] end
+  local function rd16(i) local a = addr(i); return a and emu.read(a, RAM) + 256 * emu.read(a + 1, RAM) end
+  local function rd8(i) local a = addr(i); return a and emu.read(a, RAM) end
+  local function signed(v) return v and (v >= 32768 and v - 65536 or v) end
+  local function wr16(i, v) local a = addr(i); emu.write(a, v % 256, RAM); emu.write(a + 1, v // 256, RAM) end
+  return {
+    x = function() return rd16(0) end, y = function() return rd16(1) end,
+    vx = function() return signed(rd16(2)) end, vy = function() return signed(rd16(3)) end,
+    grounded = function() return rd8(4) end, facing_left = function() return rd8(5) end,
+    teleport = function(px, py) wr16(0, math.floor(px * 256)); wr16(1, math.floor(py * 256)); wr16(2, 0); wr16(3, 0) end,
+  }
+end
+
 T.failures = 0
 function T.check(cond, msg)
   print((cond and "PASS  " or "FAIL  ") .. msg)

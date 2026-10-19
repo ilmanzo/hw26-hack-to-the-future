@@ -56,6 +56,8 @@ local function plant_spawned_drone()
   return false
 end
 
+local player = T.geeko("player")
+
 local function wait_vulnerable() wait_until(function() return u8("invuln") == 0 end, 200) end
 
 local function body()
@@ -86,12 +88,27 @@ local function body()
   wait(2)
   check(u8("player_ducking") == 0, "releasing Down stands up")
 
-  local ground = u16("player_y_sub")
+  local ground = player.y()
   press({a = true}, 1)
   wait(5)
-  check(u8("player_jumping") == 1 and u16("player_y_sub") < ground, "A jumps")
-  check(wait_until(function() return u8("player_jumping") == 0 end, 120)
-        and u16("player_y_sub") == ground, "lands back on the ground")
+  check(player.grounded() == 0 and player.y() < ground, "A jumps")
+  check(wait_until(function() return player.grounded() == 1 end, 120)
+        and player.y() == ground, "lands back on the ground")
+
+  -- The jump is the code shared with the rooms (geeko.c): a held jump rises 49 px, a tap hops less.
+  local top = ground
+  T.hold({a = true})
+  for _ = 1, 70 do wait(1); top = math.min(top, player.y()) end
+  T.hold({})
+  check((ground - top) / 256 >= 47 and (ground - top) / 256 <= 51, "a held jump rises about 49 px, as in the rooms (" .. string.format("%.1f", (ground - top) / 256) .. ")")
+  wait_until(function() return player.grounded() == 1 end, 120)
+  wait(3)
+  top = ground
+  press({a = true}, 2)
+  for _ = 1, 40 do wait(1); top = math.min(top, player.y()) end
+  check((ground - top) / 256 > 2 and (ground - top) / 256 < 24, "letting go of A early gives a shorter jump (" .. string.format("%.1f", (ground - top) / 256) .. " px)")
+  wait_until(function() return player.grounded() == 1 end, 120)
+  wait(3)
 
   wait(40)
   check(u16("score") > 0, "score increases while playing")
@@ -106,12 +123,13 @@ local function body()
   check(u16("scroll_x") - scroll0 == speed * 30, "main loop keeps up with 60 fps (no dropped frames)")
 
   -- jumping clears a ground obstacle: no hit, no time lost beyond the frames that passed
-  press({a = true}, 1)
-  wait_until(function() return u16("player_y_sub") < ground - 30 * 256 end, 30)
+  T.hold({a = true})                         -- hold A: a full jump
+  wait_until(function() return player.y() < ground - 30 * 256 end, 30)
   local t0 = u16("time_left")
   plant(OBS_BUG, 154, 14)
+  T.hold({})
   check(u8("game_state") == STATE.PLAYING and t0 - u16("time_left") <= 4, "jumping clears a ground obstacle")
-  wait_until(function() return u8("player_jumping") == 0 end, 120)
+  wait_until(function() return player.grounded() == 1 end, 120)
 
   -- A hit slows Geeko, costs time, starts the invulnerability; it does not end the game.
   poke(sym.mph, 50)
