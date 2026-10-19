@@ -35,7 +35,7 @@ Limits of the draft, so nobody is surprised:
 * No "+10" / "-5" popups on the HUD; the hack tick reuses `sfx_beep` and a finished terminal reuses `sfx_warp`.
 * The drone is the only foe type; its patrol code lives in `room.c`.
 * Sprites per scanline, measured from OAM by `tests/sprites.lua`: race 6, drone over a ground obstacle 6, crash burst 7, warp with the fire trail 8, room 4, map 2: never above 8.
-* On the title screen SELECT jumps straight into room 1 (`DEV_SELECT_ROOM` in `tuning.h`; set it to 0 for a release).
+* **Cheats for testing**, each a `#define` in `tuning.h` switched before the build (both 0 in a release): `DEV_LEVEL_SELECT` (default 1: on the map LEFT/RIGHT pick any of the five levels, A starts its race, SELECT its room) and `DEV_INVULNERABLE` (default 0: Geeko is never hit and blinks all the time). `make test` needs the defaults; `tests/cheats.lua` checks both switches in both positions.
 * Not tried: real hardware, a second emulator (MMC3A / MMC3B IRQ differences would matter for reload value 0, which is not used).
 
 ---
@@ -368,7 +368,7 @@ Design (arena map, agents, lanes, overload): section 8b. Nothing is built.
 |---|---|---|---|---|
 | 8.1 | Credits screen with the licence notices (nesdoug MIT, neslib public domain, FamiTone2, the CC0 track) | screen exists, glyph test | S | Open |
 | 8.2 | Sound: era music (more songs, same export path), dedicated effects for the hack tick, a finished terminal, the gate, a hit | `smoke.lua` audio checks extended | M | Open |
-| 8.3 | Title screen art, ending screen; remove the `DEV_SELECT_ROOM` shortcut | screenshots | M | Open |
+| 8.3 | Title screen art, ending screen; set both cheats (`DEV_LEVEL_SELECT`, `DEV_INVULNERABLE`) to 0 | screenshots | M | Open |
 | 8.4 | `README.md` and `AGENTS.md` match the finished game; real-hardware or flash-cart run if available | docs reviewed | S | Open |
 | 8.5 | Optional: hi-score saved in battery PRG-RAM (`MAPPER_USE_BATTERY`; not tried) | survives an emulator restart | S | Open |
 
@@ -385,7 +385,7 @@ Order of risk now: the first MMC3 code (1.1, 3.1, 3.2) and the era art are the u
 
 ## 8a. Room design (detailed)
 
-Design of the single-screen hacking rooms (steps M4, M5, M6). **Room 1 is built; rooms 2-4 are design only.** Everything marked *proposed* is a starting value. The maps are drafts: they are checked for reachability by `tools/check_rooms.py` (`python3 tools/check_rooms.py -v` prints them; it models the jump envelope below with the constants read from `src/player.c`; it is **not** the emulator), so a real recorded-input playthrough (steps 4.8, 6.x) is still the proof.
+Design of the single-screen hacking rooms (steps M4, M5, M6). **Room 1 is built; rooms 2-4 are design only.** Everything marked *proposed* is a starting value. The maps are drafts: they are checked for reachability by `tools/check_rooms.py` (`python3 tools/check_rooms.py -v` prints them; it models the jump envelope below with the constants read from `src/geeko.h`; it is **not** the emulator), so a real recorded-input playthrough (steps 4.8, 6.x) is still the proof.
 
 ### 8a.1 Screen anatomy
 
@@ -395,7 +395,7 @@ Design of the single-screen hacking rooms (steps M4, M5, M6). **Room 1 is built;
 
 ### 8a.2 Movement envelope (the numbers the layouts obey)
 
-Simulated with the 4a constants in the same fixed-point order as `player.c` (`vel += gravity; y += vel`, impulse -0x4C0, gravity 0x38). The full-jump apex was **measured in the emulator** (49.2 px, `tests/room.lua`); the rest of the table is the simulation:
+Simulated with the 4a constants in the same fixed-point order as `geeko.c` (`vel += gravity; y += vel`, impulse -0x4C0, gravity 0x38). The full-jump apex was **measured in the emulator** (49.2 px, `tests/room.lua`); the rest of the table is the simulation:
 
 | Rise to the target (tiles) | Frames to land on it | Reach at 1 px/frame | Reach at 2 px/frame |
 |---|---|---|---|
@@ -594,7 +594,7 @@ Score measures what the clock does not: flow, speed, no hits.
 
 **Backgrounds** (decided): the race has a **blue sky** (`C_SKY_BLUE` 0x11 in `palettes.h`: the first colour of every race palette is the screen's background colour); rooms are **black** (`room_bg_palette`); the time map is black too. The test checks the background colour (palette RAM entry 0): `0x11` in the race, `0x0f` in a room and on the map.
 
-**The time map** (`map.c`, `gfx.c`; shown after the title and after every result card, before the race): five nodes on a line at columns 4, 10, 16, 22, 28 (2x2 tiles, row 10) for 1990, 2000, 2010, 2020 and the boss (2054), a dotted path between them, the years under the nodes, "NEXT STOP" and the era's name (UNIX LABS, DOT-COM FARM, CLOUD CLEANROOM, AI EDGE, THE MAINFRAME) below, PRESS A TO GO. Eras already played are green with a tick, the next ones blue, the boss is a red eye. **Geeko (the riding sprite) blinks over the next node** (8 frames on, 8 off). The HUD stays on top (the clock is stopped). It stays `MAP_FRAMES` (180 = 3 s); A or Start skips it after `MAP_SKIP_FRAMES` (20), so the press that started the game cannot skip it. The boss's map ends the game with TO BE CONTINUED, score and rank (the boss is not built). The era counter is `epoch` in `progress.c` (0-3 the eras, 4 the boss); the HUD year, the warp's year roll and the room's hack time follow it.
+**The time map** (`map.c`, `gfx.c`; shown after the title and after every result card, before the race): five nodes on a line at columns 4, 10, 16, 22, 28 (2x2 tiles, row 10) for 1990, 2000, 2010, 2020 and the boss (2054), a dotted path between them, the years under the nodes, "NEXT STOP" and the era's name (UNIX LABS, DOT-COM FARM, CLOUD CLEANROOM, AI EDGE, THE MAINFRAME) below, PRESS A TO GO. Eras already played are green with a tick, the next ones blue, the boss is a red eye. **Geeko (the riding sprite) blinks over the next node** (8 frames on, 8 off). The HUD stays on top (the clock is stopped). It stays `MAP_FRAMES` (180 = 3 s); A or Start skips it after `MAP_SKIP_FRAMES` (20), so the press that started the game cannot skip it. **Level select** (`DEV_LEVEL_SELECT`): LEFT/RIGHT move the selection (the nodes recolour, the caption changes, Geeko moves, the timeout stops), A starts that era's race, SELECT its room, the boss node ends the game; the map shows the keys while the cheat is on. The boss's map ends the game with TO BE CONTINUED, score and rank (the boss is not built). The era counter is `epoch` in `progress.c` (0-3 the eras, 4 the boss); the HUD year, the warp's year roll and the room's hack time follow it.
 
 Terminals and node icons are 2x2 tiles on even rows and columns, so each can have its own palette (the attribute table has one palette per 2x2 tiles); `gfx_attr_set()` sets it.
 
@@ -668,6 +668,7 @@ Decided (user, 2026-10-19):
 * **Score** (8a.7): points scale with speed, dodge streak multiplier, hacked terminals, clean rooms, a finish bonus; ranks; a flawless game is tuned to about 26,000.
 * **Balance numbers are plain `#define`s in `src/tuning.h`.**
 * **A time map** is shown between levels with Geeko blinking over the next era (8a.8).
+* **Two test cheats**, level select and invulnerability, each switched by a `#define` before the build.
 * **Backgrounds:** blue sky for the race, black for the rooms, deep violet (`0x03`) for the boss arena (built with the boss, step 7.1: a palette like `room_bg_palette` with that first colour).
 * **One Geeko body** (`geeko.c`) serves every level; the code is kept free of duplicated parts (shared helpers: `geeko.c`, `gfx.c`, the test `lib.lua`).
 * **Mapper: MMC3** (section 7a).

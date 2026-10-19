@@ -17,7 +17,7 @@ The finished game has two halves: the **race** (an endless runner that ends in a
 | HUD with an MMC3 IRQ scroll split, FamiTone2 sound effects and a draft music track | Works |
 | 88 MPH time warp: flash, the year rolls, the room appears | Works (draft) |
 | Room 1 (1990): run and jump, hack two terminals (hold `B`), a patrolling drone, the gate | Playable draft, tested by a bot |
-| Time map between levels (eras on a line, Geeko blinking over the next) | Works |
+| Time map between levels (eras on a line, Geeko blinking over the next); cheats for testing (pick any level, invulnerability) switched by `#define`s in `src/tuning.h` | Works |
 | MMC3 port (scanline IRQ split) | Done |
 | Rooms for the other eras, story screens, the boss | Not started |
 
@@ -32,7 +32,7 @@ Known bugs are listed in [`plan.md`](plan.md) section 0.
 | Run (room) | `D-Pad Left` / `Right` |
 | Hack a terminal (room) | hold `B` next to it |
 | Start / restart, skip the map | `Start` or `A` |
-| Jump straight into room 1 (development shortcut on the title screen) | `Select` |
+| Cheat (build option `DEV_LEVEL_SELECT`, on by default): pick a level on the map | `Left` / `Right`, then `A` for its race or `Select` for its room |
 
 ## Build
 
