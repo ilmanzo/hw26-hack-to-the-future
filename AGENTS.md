@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents and human contributors working i
 
 ## Project
 
-NES endless runner ("Hack to the Future: Geeko McFly", openSUSE Hack Week 26). Direction: `plan.md` (race to 88 MPH, then hack terminals in era rooms against a 10-minute clock). History and tool notes: `DIARY.md`. Session memory notes (decisions, references, feedback): `memory/MEMORY.md`. NROM-256 (mapper 0, 32KB PRG + 8KB CHR), C via `llvm-mos` + `neslib` + `nesdoug`. Tests: `make test` (headless Mesen2). No linter.
+NES endless runner ("Hack to the Future: Geeko McFly", openSUSE Hack Week 26). Direction: `plan.md` (race to 88 MPH, then hack terminals in era rooms against a 10-minute clock). History and tool notes: `DIARY.md`. Session memory notes (decisions, references, feedback): `memory/MEMORY.md`. MMC3 (mapper 4: 64 KB PRG image, one 8 KB CHR tileset so far), C via `llvm-mos` + `neslib` + `nesdoug`. Tests: `make test` (headless Mesen2). No linter.
 
 ## Build
 
@@ -16,7 +16,7 @@ make test           # headless smoke test in Mesen2 (needs a built ROM, see belo
 python3 tools/check_rooms.py [-v]   # room maps of plan.md 8a/8b reachable? (jump limits from player.c); exit 1 = no
 ```
 
-- `CC` is hardcoded to `/home/andrea/.local/llvm-mos/bin/mos-nes-nrom-clang`. That path does not exist on this machine; use `make podman` (below) or override `CC`.
+- `CC` is hardcoded to `/home/andrea/.local/llvm-mos/bin/mos-nes-mmc3-clang`. That path does not exist on this machine; use `make podman` (below) or override `CC`.
 - Link step also emits `hacktothefuture.nes.elf` and `hacktothefuture.mlb` (Mesen label file).
 
 ### Container build (no local llvm-mos)
@@ -26,14 +26,14 @@ python3 tools/check_rooms.py [-v]   # room maps of plan.md 8a/8b reachable? (jum
 ```bash
 make podman         # = the two commands below
 podman build -t llvm-mos -f Containerfile .
-podman run --rm -v "$PWD":/src:Z llvm-mos make CC=mos-nes-nrom-clang
+podman run --rm -v "$PWD":/src:Z llvm-mos make CC=mos-nes-mmc3-clang
 ```
 
 The SDK tarball is verified against `LLVM_MOS_SHA256` (sha256 of `llvm-mos-linux.tar.xz`); a mismatch fails the build. When bumping `LLVM_MOS_VERSION`, update the hash too (GitHub shows it as the release asset digest, `gh api repos/llvm-mos/llvm-mos-sdk/releases/tags/<ver> --jq '.assets[].digest'`). The base image is `bci-base:latest`, not pinned.
 
 ### Headless testing (Mesen2)
 
-Mesen2 2.1.1 is installed at `~/.local/opt/mesen2/Mesen` (Lua scripting, scriptable input, RAM reads, screenshots). `make test` runs `tests/smoke.lua` (boot, Start, duck, jump, collisions, drones, game over, HUD text, title glyphs, sprites per scanline, restart, split scanline; screenshots go to `tests/out/`, gitignored). `XFAIL` lines (`xfail()` in the script) are known bugs, they don't fail the run; none open now. Raw invocation:
+Mesen2 2.1.1 is installed at `~/.local/opt/mesen2/Mesen` (Lua scripting, scriptable input, RAM reads, screenshots). `make test` runs `tests/smoke.lua`, `room.lua`, `map.lua` and `sprites.lua` (see Tests below; screenshots go to `tests/out/`, gitignored). `XFAIL` lines (`xfail()` in the script) are known bugs, they don't fail the run; none open now. Raw invocation:
 
 ```bash
 LD_PRELOAD=/usr/lib64/libstdc++.so.6 ~/.local/opt/mesen2/Mesen --testRunner \
@@ -65,21 +65,24 @@ flatpak run ca._0ldsk00l.Nestopia "$PWD/hacktothefuture.nes"
 Three pieces must stay in sync; changing one usually means touching the others:
 
 1. **`tools/build_chr.py`** generates `assets/graphics.chr` (exactly 8192 bytes, asserted). All art is ASCII art in the script (`' '`/`'.'`=color 0 transparent, `1`/`2`/`3`=colors). Layout:
-   - Pattern table 0 (`$0000`, BG): tile index == ASCII code for font (0x20–0x5F), road/sky/mountain tiles at 0x80–0x88, sprite-0 target 0x89. Room tiles (plan.md 8a.3): hack progress bar 0x01–0x09 (0–8 pixels filled), terminals 0x90–0x93 (waiting) and 0x94–0x97 (hacked), gate 0x98–0x9D (closed) and 0x9E–0xA3 (open), brick 0xC0 (top edge) and 0xC1; solid tile class = 0xC0–0xDF.
-   - Pattern table 1 (`$1000`, sprites): Geeko ride 0x00–0x03 (16x16, 2x2 tiles, row-major) and duck 0x04–0x07 (same 16x16 cell, body squashed onto the board), obstacles 0x10–0x1B, FX 0x20–0x21 (fire trail, crash star), sprite-0 pixel 0x23. Geeko is drawn as two whole ASCII pictures (`GEEKO_RIDE`, `GEEKO_DUCK`) that `put_sprite()` slices into tiles. Edit the picture, not tiles; `sprites.h` assumes this 2-wide row-major layout. Geeko uses sprite sub-palette 0 (light green, dark green, white); the board is in rows 10-15 of both poses.
+   - Pattern table 0 (`$0000`, BG): tile index == ASCII code for font (0x20–0x5F), road/sky/mountain tiles at 0x80–0x88. Time-map tiles (plan.md 8a.8): path 0xA4, era nodes 0xA8–0xAB (waiting), 0xAC–0xAF (done), 0xB0–0xB3 (boss). Room tiles (plan.md 8a.3): hack progress bar 0x01–0x09 (0–8 pixels filled), terminals 0x90–0x93 (waiting) and 0x94–0x97 (hacked), gate 0x98–0x9D (closed) and 0x9E–0xA3 (open), brick 0xC0 (top edge) and 0xC1; solid tile class = 0xC0–0xDF.
+   - Pattern table 1 (`$1000`, sprites): Geeko ride 0x00–0x03 (16x16, 2x2 tiles, row-major) and duck 0x04–0x07 (same 16x16 cell, body squashed onto the board), obstacles 0x10–0x1B, FX 0x20–0x21 (fire trail, crash star). Geeko is drawn as two whole ASCII pictures (`GEEKO_RIDE`, `GEEKO_DUCK`) that `put_sprite()` slices into tiles. Edit the picture, not tiles; `sprites.h` assumes this 2-wide row-major layout. Geeko uses sprite sub-palette 0 (light green, dark green, white); the board is in rows 10-15 of both poses.
    2. **`assets/chr-rom.s`** `.incbin`s `graphics.chr` into the `.chr_rom` section. The Makefile finds it via `-Iassets`. **`assets/audio.s`** includes the generated FamiTone2 data (`assets/audio/chill.s`, `sfx.s`) as `music_data` / `sounds_data`.
 3. **`src/`** consumes those tile indices by number. One module per concern (`.h` = what other modules may use, `.c` = private state):
 
    | Module | Owns |
    |---|---|
-   | `main.c` | State machine (`TITLE → PLAYING (race) → WARP → ROOM → RESULT → PLAYING`, and `GAMEOVER` when the clock runs out; keep the numbers in step with `tests/lib.lua`), `session_start()`, `race_begin()`, the `while(1)` frame loop. `bank_spr(1)` / `bank_bg(0)` match the CHR layout above |
-   | `player` | Geeko input, jump physics (8.8 fixed point), hitbox, drawing. State is private; others use `player_y()` / `player_get_box()` |
+   | `main.c` | State machine (`TITLE → MAP → PLAYING (race) → WARP → ROOM → RESULT → MAP → ...`, and `GAMEOVER` when the clock runs out; keep the numbers in step with `tests/lib.lua`), `session_start()`, `race_begin()`, the `while(1)` frame loop. `bank_spr(1)` / `bank_bg(0)` match the CHR layout above |
+   | `geeko` | Geeko's body, shared by every level: jump, fall and run physics (8.8 fixed point), hitbox, blink after a hit, drawing. `struct Geeko` |
+   | `player` | The race: a `struct Geeko` with a fixed x on a flat road, ducking, the hoverboard bob. Others use `player_y()` / `player_get_box()` |
    | `obstacles` | Spawning, movement, collision against a `struct Box`, drawing |
    | `progress` | `scroll_x`, `speed_px`, `mph` (20 → 88), `score`, `hi_score`, the clock (`time_left`, frames), invulnerability, dodge streak and multiplier, rank. Only `progress.c` writes them |
-   | `hero` | Geeko in a room: run with inertia, jump, tile collision (8.8 fixed point), knockback, drawing (left/right/hack pose) |
+   | `hero` | A room: a `struct Geeko` plus tile collision and knockback |
+   | `map` | The time map shown before each level (eras on a line, Geeko blinking over the next) |
+   | `gfx` | PPU helpers shared by room, map and cards: wipe, tile blocks, the attribute table |
    | `room` | A room: drawn at load from `assets/rooms.h` (rectangles of solid tiles, terminals, gate, drone), `room_solid()`, terminals (hold B), gate, drone patrol and contact |
    | `render` | `render_all_sprites()`: the one place that decides OAM draw order |
-   | `hud` | HUD text and numbers, sprite 0 + its target tile, the scroll split (`hud_scroll()`) |
+   | `hud` | HUD text and numbers, the MMC3 IRQ that splits HUD and scroll (`hud_irq_init()`, `hud_scroll()`) |
    | `screens` | Background nametable, title screen, game-over text |
    | `sfx` | FamiTone2 music (`sfx_music_start/stop`) and sound effects (`sfx_jump`, ...) |
    | `game.h` | Constants and `struct Box` shared by several modules |
@@ -90,20 +93,20 @@ Three pieces must stay in sync; changing one usually means touching the others:
 
 ### Runtime model
 
-- Frame loop: `ppu_wait_nmi()` → `hud_scroll()` (blocks until the sprite-0 hit while racing) → read pad → one state function → `render_all_sprites()` / `render_room_sprites()` / `render_clear()`.
+- Frame loop: `ppu_wait_nmi()` → `hud_scroll()` (arms this frame's IRQ array, never waits) → read pad → one state function → `render_all_sprites()` / `render_room_sprites()` / `render_clear()`.
 - **Game rules** (`plan.md` sections 1, 8a.6, 8a.7; numbers in `tuning.h`): one clock for the whole game (`GAME_TIME_S`, a u16 frame counter, so at most 1092 s); only the clock reaching 0 is a game over. A race crash or a foe contact costs `HIT_TIME_PENALTY_S` and starts `INVULN_FRAMES` of invulnerability; a race crash also costs `CRASH_MPH_LOSS`. A race lasts until 88 MPH (`mph` rises +1 per `RACE_FRAMES_PER_MPH` frames), then WARP, then the room. Hacking a terminal gives `HACK_TIME_BONUS_S` and `TERMINAL_POINTS`. Score: speed points every `SCORE_TICK_FRAMES` frames, dodges x a multiplier that grows every `DODGE_STREAK_STEP` dodges and resets on a hit, a clean-room bonus; rank names from `RANK_*_SCORE`. `tests/smoke.lua` checks that a flawless game is worth about 26,000 points (model from a measured clean race).
-- **Sprite-0 hit split** (`hud.c`): stationary HUD on nametable rows 0–2, scrolling playfield below. Sprite 0 (`hud_sprite_zero()`: `oam_spr(240,22,0x23,0x20)`, behind BG) must overlap the single pixel of BG tile `0x89` placed at `NTADR_A(30,2)` (`hud_draw_split_target()`, also called by the title screen). The hit lands on scanline 23 (last HUD scanline) so the scroll applies from 24; the smoke test asserts this. A hit earlier than the HUD's last scanline scrolls the bottom strokes of the HUD text (this bug existed with the old sprite 0 at Y=20 / tile 0x80: hit on scanline 21). Moving either piece, or changing those two pixels, breaks the split. `split(scroll_x)` runs only in `STATE_PLAYING`; other states force scroll 0. OAM slots 0–3 are reserved (`oam_set(4)`) for sprite 0.
+- **MMC3 IRQ split** (`hud.c`, `main.c`): stationary HUD on nametable rows 0–2, scrolling playfield below. `mapper_init()` sets the CHR banks (A12 inverted: background = 1 KB banks 0–3, sprites = 2 KB banks 4 and 6), vertical mirroring and PRG mode 0. `hud_scroll()` writes a 6-byte array for the nesdoug IRQ handler: `{22, 0xF0, ctrl, 0xF5, x, 0xFF}` = after 22 lines write `$2000` (nametable bit, `PPU_CTRL_BASE` in game.h) and `$2005` (X scroll). The writes land on scanline 23, the HUD's last, before the PPU copies the scroll at dot 257, so the scroll applies from 24 (a count of 23 lands on 24; the smoke test asserts 23). Only `STATE_PLAYING` scrolls; other states write `{0xFF}`. The ROM image needs `MAPPER_PRG_ROM_KB(64)` (the SDK default is 512 KB PRG + 256 KB CHR = 768 KB) and `set_chr_bank_retry` for later CHR swaps (the IRQ shares the register).
 - Both nametables A and B are filled by `background_draw()` for seamless horizontal scroll; only A gets the HUD text (HUD is above the split so B never shows it).
 - HUD numbers update through the nesdoug VRAM buffer (`multi_vram_buffer_horz`), not direct PPU writes, while rendering is on. Direct `vram_*` writes require `ppu_off()`. The NMI flushes only about 100 bytes per vblank: more corrupts the screen (seen: a garbled HUD digit), so `hud_update()` writes only what changed, and the game-over and result screens are drawn with rendering off.
 - `speed_px = 2 + mph/25`; `mph` no longer depends on the score. In tests poke `mph` below 88 and wait for it to step (a poke at 88 never updates `speed_px`).
-- OAM draw order matters (`render.c`): sprite 0 first, then obstacles, Geeko, fire trail. Past 8 sprites per scanline the PPU drops the lowest-priority ones; Geeko is 2 tiles wide, but keep the fire trail last.
+- OAM draw order matters (`render.c`): obstacles, Geeko, fire trail (`tests/sprites.lua` measures the busiest scanline of every scene: 6, 6, 7, 8 with the fire trail in the warp, 4, 2). Past 8 sprites per scanline the PPU drops the lowest-priority ones; Geeko is 2 tiles wide, but keep the fire trail last.
 - Collision: `nesdoug check_collision()` takes pointers to structs whose first four bytes are `x, y, width, height`. `struct Box` (game.h) and `struct Obstacle` (obstacles.c) keep those first on purpose; do not reorder.
 - Geeko-art-dependent hand-tuned numbers: hitbox (`player.c`: x+2, w 12; standing y+1, h 15; crouched y+6, h 10), crash star at x+4, y+2, fire trail at y+7 / y+8 (`render.c`), drone flying y 147 (`obstacles.c`: its box must overlap the standing hitbox but not the crouched one), and `GROUND_Y` 155 (`game.h`, sprite top; the board's bottom row sits at y 170 as before). Both poses keep the board in the same rows so it does not jump when ducking. Re-check these if you redraw Geeko.
 - Sound: FamiTone2 (in neslib's NMI). Music = one track (`assets/audio/chill.ftm`, CC0, placeholder) that plays while `STATE_PLAYING` and stops on the crash; the title screen is silent. Effects use slots 0-3 by APU channel: Pulse1 jump/duck, Pulse2 beep, Triangle warp, Noise crash; FamiTone2 has no volume column and few effects, so the song was cut down on export (see `plan.md` section 7b). `assets/audio/*.s` are generated (FamiStudio in a container, `tools/export_audio.sh`); the `.ftm` / `.txt` next to them are the sources. `tests/smoke.lua` reads the emulated APU state to check that music plays, the title is silent and everything is silent at game over.
 
 ### Tests
 
-`make test` runs `tests/smoke.lua` (the race, the clock, score and rank, the game-over screen, the warp) and `tests/room.lua` (room 1: movement numbers, collision, hacking, the drone, the gate, the result card, and a bot that plays the whole room with the pad). Shared helpers are in `tests/lib.lua`. Rules learned: a button must be seen released for a frame before a press registers (`wait(3)` between a hold and a tap); positions are 8.8 fixed point (a standing Geeko can have a fractional y, compare the integer part); `takeScreenshot` can lag a frame or two behind the game, read the PPU memory for text.
+`make test` runs four scripts: `smoke.lua` (the race, the clock, score and rank, the game-over screen, the warp, the HUD split at scanline 23), `room.lua` (room 1: movement numbers, collision, hacking, the drone, the gate, the result card, and a bot that plays the whole room with the pad), `map.lua` (the time map, blinking, skipping, era progress, the ending) and `sprites.lua` (sprites per scanline in every scene). Shared helpers are in `tests/lib.lua` (a `struct Geeko` is read by field labels: the label file lists `name.0`, `name.1`, ... and the compiler drops fields a level never uses). Rules learned: a button must be seen released for a frame before a press registers (`wait(3)` between a hold and a tap); positions are 8.8 fixed point (a standing Geeko can have a fractional y, compare the integer part); `takeScreenshot` can lag a frame or two behind the game, read the PPU memory for text.
 
 ### Refactoring safety net
 

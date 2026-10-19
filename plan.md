@@ -14,26 +14,29 @@ Numbers marked *proposed* are starting values to tune, not decisions. Balance nu
 
 ## 0. Status (2026-10-19)
 
-Verified by `make test` (headless Mesen2: `tests/smoke.lua` and `tests/room.lua`) and screenshots.
+Verified by `make test` (headless Mesen2: `tests/smoke.lua`, `room.lua`, `map.lua`, `sprites.lua`) and screenshots.
 
 | Piece | State |
 |---|---|
-| Race: road, jump/duck, 3 obstacle types, 20 -> 88 MPH in about 60 s; a crash costs 10 MPH, 5 s and 1 s of invulnerability and never ends the run | Works, tested |
+| Race: road, jump/duck, 3 obstacle types, 20 -> 88 MPH in about 60 s; a crash costs 10 MPH, 5 s and 1 s of invulnerability and never ends the run; blue sky | Works, tested |
 | One 10-minute clock; game over only when it reaches 0, with a screen showing score and rank; A or Start restarts the game | Works, tested |
 | Score: speed points, dodge streak x1 to x5, hacked terminals, clean room; ranks NEWBIE to ROOT; a flawless game is tuned to about 26,000 | Works, tested (the smoke test checks the model) |
-| HUD: clock, year, multiplier, speed (race) or terminals (room), score, hi-score; sprite-0 scroll split | Works |
-| Warp at 88 MPH: flash, the year rolls 1985 to 1989, the room appears (1990) | Works (draft), tested |
-| Room 1 (1990): run with inertia, jump, tile collision, 2 terminals (hold B), a patrolling drone, the gate, the result card | Playable draft, tested piece by piece and by a bot that plays the whole room |
+| HUD: clock, year, multiplier, speed (race) or terminals (room), score, hi-score; MMC3 scanline IRQ splits it from the scroll | Works, tested |
+| Time map before each level: eras on a line, finished ones green, Geeko blinking over the next; A or Start skips it | Works, tested |
+| Warp at 88 MPH: flash, the year rolls, the room appears | Works (draft), tested |
+| Room 1 (1990): run with inertia, jump, tile collision, 2 terminals (hold B), a patrolling drone, the gate, the result card; black background | Playable draft, tested piece by piece and by a bot that plays the whole room |
+| One Geeko body (`geeko.c`) for the race and the rooms: the same jump, fall and run code, hitbox, drawing | Done, tested (a held jump rises 49.2 px in both) |
 | FamiTone2 music (one placeholder track) and 5 effects | Works; nobody has listened to the effects in the game |
-| Mapper | NROM today (32 KB PRG, 8 KB CHR). **MMC3 decided**, spike only (section 7a) |
-| Rooms 2-4, the boss, story screens, sequence table, pause, era art, CHR banks per era | Not started |
+| Mapper | **MMC3 port done**: 64 KB PRG image, one 8 KB CHR tileset, IRQ split, vertical mirroring |
+| Rooms for the other eras, the boss, story screens, sequence table, pause, era art, CHR banks per era | Not started |
 
 Limits of the draft, so nobody is surprised:
-* Only room 1 exists. After its result card the next race starts in 1985 again and leads to the same room. The flow is hard-coded in the state functions of `main.c` (no sequence table yet, step 2.1).
+* Only room 1 exists: every era plays it (the hack time follows the era: 60, 75, 90, 105 frames). The flow is hard-coded in the state functions of `main.c` (no sequence table yet, step 2.1). After the 2020 room the map shows the boss and the game ends with TO BE CONTINUED (the boss is not built).
 * No "+10" / "-5" popups on the HUD; the hack tick reuses `sfx_beep` and a finished terminal reuses `sfx_warp`.
 * The drone is the only foe type; its patrol code lives in `room.c`.
-* Sprites per scanline: measured 8 at most while racing at 88 MPH (2 obstacles + Geeko + both fire-trail flames). Not re-measured since the crash became non-fatal (the crash star adds a ninth sprite for 20 frames; the PPU would drop the last one in OAM order, the trail's second flame).
+* Sprites per scanline, measured from OAM by `tests/sprites.lua`: race 6, drone over a ground obstacle 6, crash burst 7, warp with the fire trail 8, room 4, map 2: never above 8.
 * On the title screen SELECT jumps straight into room 1 (`DEV_SELECT_ROOM` in `tuning.h`; set it to 0 for a release).
+* Not tried: real hardware, a second emulator (MMC3A / MMC3B IRQ differences would matter for reload value 0, which is not used).
 
 ---
 
@@ -41,25 +44,26 @@ Limits of the draft, so nobody is surprised:
 
 ```
 Built (draft):
-TITLE -> RACE (20 -> 88 MPH, 60 s) -> WARP (flash, year rolls) -> ROOM 1 (hack 2 terminals) -> gate -> RESULT card -> RACE ...
+TITLE -> MAP -> RACE (20 -> 88 MPH, 60 s) -> WARP (flash, year rolls) -> ROOM (hack 2 terminals) -> gate -> RESULT card -> MAP -> RACE ...
                   clock reaches 0 in RACE or ROOM -> GAME OVER (score, rank) -> A -> new game
 
 Target:
         +--------------------------- repeat for each epoch ----------------------------+
         |                                                                              |
-TITLE -> STORY -> RACE -> WARP (flash, year rolls) -> ROOM (hack terminals)
+TITLE -> MAP -> RACE -> WARP (flash, year rolls) -> ROOM (hack terminals)
                                                          |
                           all terminals green -> exit gate opens -> reach it -> RESULT card
                                                          |
-                                  last epoch done?  no -> STORY -> RACE ...
-                                                    yes -> STORY -> BOSS: THE MAINFRAME -> ENDING (WIN)
+                                  last epoch done?  no -> MAP -> RACE ...
+                                                    yes -> MAP -> BOSS: THE MAINFRAME -> ENDING (WIN)
 ```
 
 * **RACE is the way into the future.** Reaching 88 MPH triggers the warp. A race lasts 60 s without crashes.
+* **MAP**: before each race a time map shows the eras and where Geeko is going (8a.8).
 * **ROOM is the hack level**: one single screen (no scrolling) with platforms, terminals, foes and a gate. Geeko runs with inertia and jumps (section 4a). No weapons.
 * **No death.** There are no lives and no health. A hit costs **fixed time** from the clock (a race crash also slows Geeko, so reaching 88 MPH takes longer); hacking a terminal **adds time**. There is **one clock for the whole game, 10 minutes**. The only game over is the clock reaching 0; a game over restarts the whole game from the race with a full clock. Amounts: section 8a.6 and `tuning.h`.
 * **Score** measures flow and speed, not the clock: section 8a.7.
-* Rooms per epoch: 1 (the 10-minute clock fits that; the room data format allows several).
+* Rooms per epoch: 1 (the 10-minute clock fits that; the room data format allows several). Until each era has its own room, every era plays room 1.
 * The target flow is driven by a **sequence table** (a list of `STORY`, `RACE`, `ROOM(n)`, `BOSS` rows); main.c would step through it. Not built, step 2.1.
 
 ---
@@ -110,7 +114,7 @@ Conflicts between the art and this plan:
 
 ## 4a. Room movement (as built, `hero.c`)
 
-Geeko moves like a platformer hero with the hoverboard's **inertia on start and stop**. 8.8 fixed point, the same jump numbers as the race; measured by `tests/room.lua`:
+Geeko moves like a platformer hero with the hoverboard's **inertia on start and stop**. The code is **one body for every level** (`geeko.c`: `geeko_jump`, `geeko_fall`, `geeko_run`, `geeko_box`, `geeko_draw`, `struct Geeko`): the race (`player.c`) adds a flat road, ducking and the bob; a room (`hero.c`) adds tile collision and knockback; the boss will use `hero.c` too. So the race has the same variable-height jump (a tap hops 13 px, a held jump rises 49 px; `tests/smoke.lua` and `tests/room.lua` measure the same 49.2 px). 8.8 fixed point; measured by `tests/room.lua`:
 
 | | Ground | Air |
 |---|---|---|
@@ -134,7 +138,7 @@ Not built. The full design is section 8b; in short: a single-screen arena with 6
 
 ## 6. HUD (as built, `hud.c`)
 
-Two text rows in nametable rows 1-2, above the scroll split (rooms do not scroll):
+Two text rows in nametable rows 1-2, above the MMC3 scroll split (rooms and the map do not scroll):
 
 ```
 TIME 10:00  YEAR 1985  X1
@@ -150,11 +154,11 @@ Proposed for the boss: top row replaced by `THE MAINFRAME` and one `#` per unhac
 
 ## 7. NES constraints and what they force
 
-1. **CHR budget (the biggest issue).** NROM has one fixed 8 KB CHR: 256 background tiles and 256 sprite tiles. Today's BG table holds the font, the race scenery (`0x80-0x89`) and the room tiles (hack bar `0x01-0x09`, terminals `0x90-0x97`, gate `0x98-0xA3`, brick `0xC0-0xC1`); sprites hold Geeko, obstacles and FX. Four eras plus a boss with distinct terminals, platforms and foes will not fit: switch mapper so CHR is **banked per era** (the warp flash is where to swap). Mapper: section 7a.
-2. **Sprites per scanline: 8.** Geeko is 2 tiles wide. A room: Geeko 2 + three 2-tile foes = 8. The boss with 3 agents is exactly 8. Draw order puts the least important sprites last.
+1. **CHR budget (the biggest issue).** The ROM has one 8 KB CHR tileset so far: 256 background tiles and 256 sprite tiles. Today's BG table holds the font, the race scenery (`0x80-0x88`), the room tiles (hack bar `0x01-0x09`, terminals `0x90-0x97`, gate `0x98-0xA3`, brick `0xC0-0xC1`) and the map (`0xA4-0xB3`); sprites hold Geeko, obstacles and FX. Four eras plus a boss with distinct terminals, platforms and foes will not fit: bank the CHR **per era** with the MMC3 (the warp flash is where to swap; step M3). Mapper: section 7a.
+2. **Sprites per scanline: 8.** Measured from OAM by `tests/sprites.lua`: race 6, a drone over a ground obstacle 6, the crash burst 7, the warp with the fire trail 8 (the trail only exists there: the race ends at 88 MPH), a room 4, the map 2. A room with three 2-tile foes would be 8; the boss with 3 agents is exactly 8. Draw order puts the least important sprites last.
 3. **Level data.** Room 1 is 4 rectangles, 2 terminals, 1 gate and 1 foe: tens of bytes, generated into `assets/rooms.h`. RAM-free (`const` in PRG).
-4. **RAM 2 KB:** about 0.9 KB in use (zero page 222 B, `.aligned` 416 B including the 256 B OAM buffer, `.bss` 72 B, `.noinit` 185 B; the C software stack is not counted). Room layouts, foe lists and text stay `const` in PRG.
-5. **PRG:** 15.2 KB used of 32 KB (`.text` 13.3 KB, `.rodata` 1.8 KB including the audio data).
+4. **RAM 2 KB:** about 0.9 KB in use (zero page 223 B, `.aligned` 416 B including the 256 B OAM buffer, `.bss` 68 B, `.noinit` 187 B; the C software stack is not counted). Room layouts, foe lists and text stay `const` in PRG.
+5. **PRG:** 16.9 KB used (`.text` 14.9 KB, `.rodata` 2.0 KB including the audio data) of the 64 KB image; the code sits at `$A000` and up.
 6. **VRAM buffer:** about 100 bytes per vblank. Bigger updates need `ppu_off()` (the game-over screen and the result card do that).
 7. **Audio:** FamiTone2, section 7b.
 8. **Testing.** Mesen Lua can poke RAM, so tests jump straight to a state (`mph`, `time_left`, `score`, the hero position), read the PPU (nametable text, tiles) and the APU. `make test` runs `tests/smoke.lua` and `tests/room.lua`; `tests/lib.lua` holds the shared helpers and reads `src/tuning.h`.
@@ -167,10 +171,10 @@ Checked 2026-10-12 in the llvm-mos SDK of `Containerfile` (v23.3.0): targets `mo
 
 | Target (mapper) | CHR | PRG | What it gives us | Notes |
 |---|---|---|---|---|
-| `nrom` (0), **current** | up to 8 KiB ROM or RAM | fixed | simplest | too small for per-era art |
+| `nrom` (0) | up to 8 KiB ROM or RAM | fixed | simplest | too small for per-era art |
 | `cnrom` | CHR-ROM in **8 KiB banks**, up to 2048 KiB | fixed (no PRG banking) | `set_chr_bank(n)`; `swap_chr_bank(n)` / `split_chr_bank(n)` change the bank at the next NMI / until the next NMI. BG and sprite tables swap together | Lowest-effort fix. Each bank repeats the font + HUD tiles (~50). Bus conflicts handled by the SDK's rompoke table (`_rompoke.ld`) |
 | `mmc1` | CHR-ROM up to 128 KiB in **4 KiB banks** (BG and sprites independent), or CHR-RAM up to 8 KiB | banked (`set_prg_bank`, `banked_call`) | independent BG / sprite banks, PRG banking, PRG-RAM up to 32 KiB | More code than CNROM; needs `banked_call` discipline |
-| `mmc3` | CHR-ROM in **1 KiB banks** (finest) | up to 512 KiB, banked (`set_prg_8000/a000`, `banked_call*`) | per-1 KiB CHR swaps and a **scanline IRQ** (`set_irq_ptr`, `is_irq_done`), so the HUD split would not need sprite 0; PRG-RAM up to 8 KiB, mirroring control | Most capable and the most complex; widely supported by emulators and flash carts (the `file-fixers` sibling uses it) |
+| `mmc3`, **current** | CHR-ROM in **1 KiB banks** (finest) | up to 512 KiB, banked (`set_prg_8000/a000`, `banked_call*`) | per-1 KiB CHR swaps and a **scanline IRQ** (`set_irq_ptr`, `is_irq_done`), so the HUD split would not need sprite 0; PRG-RAM up to 8 KiB, mirroring control | Most capable and the most complex; widely supported by emulators and flash carts (the `file-fixers` sibling uses it) |
 | `unrom` | 8 KiB (in practice CHR-RAM) | banked, up to 4096 KiB | big PRG; with CHR-RAM, tiles are uploaded from PRG at warp time (screen off) | Art lives in PRG, so no CHR-ROM size limit, but needs an upload routine |
 | `unrom-512` | ROM or RAM up to 32 KiB | up to 512 KiB, banked | mirroring control, homebrew-board friendly | CHR-RAM like UNROM |
 | `gtrom` | CHR-RAM up to 16 KiB | up to 512 KiB (32 KiB banks) | 2 nametable banks, board LEDs | Homebrew board |
@@ -179,7 +183,7 @@ Checked 2026-10-12 in the llvm-mos SDK of `Containerfile` (v23.3.0): targets `mo
 
 All of them link the same `neslib`, `nesdoug` and FamiTone2 libraries. A different mapper changes the compiler command (`CC=mos-nes-<mapper>-clang`), the linker section names for CHR (`chr_rom_0`, `chr_rom_1`, ... for banks) and the iNES header; `build_chr.py` / `chr-rom.s` would emit one bank per epoch. Not prototyped: bank section names for `.incbin` and the bus-conflict handling still have to be tried.
 
-**Decided 2026-10-19: MMC3.** Only MMC3 has a scanline IRQ among the eight SDK targets (the other `mapper.h` files have none), so it is the only one that removes the sprite-0 trick; it also has 1 KB CHR banks, so the font and Geeko tiles are not repeated per era.
+**Decided 2026-10-19: MMC3, and built the same day (steps 1.1-1.3).** Only MMC3 has a scanline IRQ among the eight SDK targets (the other `mapper.h` files have none), so it is the only one that removes the sprite-0 trick; it also has 1 KB CHR banks, so the font and Geeko tiles are not repeated per era.
 
 **Spike (2026-10-19, `/tmp/mmc3-spike`, a throwaway copy, not in the repo)**: the current game built with `mos-nes-mmc3-clang` and ~30 changed lines (init in `main.c`, `hud_scroll()` building the IRQ array, sprite 0 disabled). Measured in Mesen:
 * `tests/smoke.lua` passes unchanged, including the scroll split on scanline 23. IRQ array `{22, 0xF0, ctrl, 0xF5, x, 0xFF}`: the IRQ handler's two `$2005` writes land on scanline 23, dots 35-57, before dot 257, so the new coarse scroll applies from line 24. With count `23` they land on line 24 (the first playfield line, black sky: invisible here, but a glitch for other art).
@@ -188,7 +192,7 @@ All of them link the same `neslib`, `nesdoug` and FamiTone2 libraries. A differe
 * `set_chr_bank` "may have no effect if interrupted"; use `set_chr_bank_retry` outside vblank-safe code. The IRQ array has no CHR commands, so main-thread CHR changes are safe (comment in `nesdoug-llvm/33_MMC3/MMC3/mmc3_code.asm`).
 * Not checked: real hardware (MMC3A / MMC3B IRQ differences matter for reload value 0, not used here), other emulators, how the SDK restarts the IRQ array each frame (observed to work, source not read).
 
-Nothing else in the loop or the modules depends on the mapper.
+**The port** changed `main.c` (`mapper_init()`, the ROM-size macros), `hud.c` (the IRQ array), `render.c` and `screens.c` (sprite 0 gone), `build_chr.py` (its two tiles gone) and the Makefile (`mos-nes-mmc3-clang`); every test passed unchanged. The ROM is 73,744 bytes. Not checked: real hardware, other emulators, how the SDK restarts the IRQ array each frame (observed to work, source not read).
 
 ---
 
@@ -262,26 +266,26 @@ Rules: GPL-3.0 repo (section 10) takes CC0 fine. Reused tracks must fit FamiTone
 
 ## 8. Roadmap (step by step)
 
-**Mapper decided 2026-10-19: MMC3** (spike in section 7a, not ported yet). The milestones are ordered so the game is **playable after every milestone**; the cut lines at the end say where to stop if time runs out. Hack Week 26 is 2026-11-30 to 12-04. Much of M2 and M4 was built ahead of M1 and M3, on NROM: the MMC3 port does not block any of it. State column: **Done** (built and tested), **Draft** (works, to be finished), **Open**.
+**Mapper: MMC3, ported 2026-10-19** (section 7a). The milestones are ordered so the game is **playable after every milestone**; the cut lines at the end say where to stop if time runs out. Hack Week 26 is 2026-11-30 to 12-04. Much of M2 and M4 was built ahead of M1 and M3, on NROM: the MMC3 port does not block any of it. State column: **Done** (built and tested), **Draft** (works, to be finished), **Open**.
 
 Rules for every step: it ends with `make test` green; logic gets a check (`tests/smoke.lua`, `tests/room.lua` or a script next to them); a change that must not alter the picture is checked with `tests/trace.lua` (diff identical); one `DIARY.md` line; commit only when asked. Sizes are relative (S, M, L), not time.
 
-**Budgets** (NROM build, 2026-10-19; re-measure with `llvm-readelf -S -W hacktothefuture.nes.elf`):
+**Budgets** (MMC3 build, 2026-10-19; re-measure with `llvm-readelf -S -W hacktothefuture.nes.elf`):
 
 | Resource | Now | Limit / target |
 |---|---|---|
 | RAM | about 0.9 KB (section 7) | 2 KB. Room layouts, foe lists and text stay `const` in PRG |
-| PRG | 15.2 KB (`.text` 13.3 KB + `.rodata` 1.8 KB, audio data included) | NROM 32 KB. The MMC3 image is 64 KB (`MAPPER_PRG_ROM_KB(64)`); where the default code placement ends there is **not checked**: when `.text` + `.rodata` pass about 20 KB, check it and move room data and story text to banked sections (`#pragma clang section`, as in `nesdoug-llvm/33_MMC3`) |
+| PRG | 16.9 KB (`.text` 14.9 KB + `.rodata` 2.0 KB, audio data included) | the 64 KB image (`MAPPER_PRG_ROM_KB(64)`); where the default code placement ends is **not checked**: when `.text` + `.rodata` pass about 20 KB, check it and move room data and story text to banked sections (`#pragma clang section`, as in `nesdoug-llvm/33_MMC3`) |
 | CHR | 8 KB | 32 KB target: 4 KB common + 4 KB per era (M3) |
-| CPU | game logic starts at scanline 29 on NROM (the sprite-0 spin runs from scanline 258 to 23); about 3 on MMC3 (spike) | watch the "main loop keeps up with 60 fps" check |
+| CPU | game logic starts at about scanline 3 (29 before the MMC3 port: the sprite-0 spin ran from scanline 258 to 23) | watch the "main loop keeps up with 60 fps" check |
 
 ### M1. MMC3 port (platform)
 
 | # | Step | Done when | Size | State |
 |---|---|---|---|---|
-| 1.1 | Port as in the spike: `main.c` init (`disable_irq`, `CLI`, PRG mode 0, `CHR_A12_INVERT`, 6 CHR banks, `MIRROR_VERTICAL`, IRQ pointer); `hud_scroll()` builds `{22, 0xF0, ctrl, 0xF5, x, 0xFF}` (derive `ctrl` from the neslib PPU control value instead of the spike's hardcoded `0x88`); `MAPPER_PRG_ROM_KB(64)`, `MAPPER_CHR_ROM_KB(8)` | `make test` unchanged and green; ROM is 73,744 bytes (spike) | S | Open |
-| 1.2 | Delete sprite 0: `hud_sprite_zero`, `hud_draw_split_target` (and its calls in `hud.c` and `screens.c`), the `oam_set(4)` reserve in `render.c`, tiles `0x23` / `0x89` in `build_chr.py` | `make test` green; new `tests/trace.lua` baseline recorded (hashes change: the target pixel is gone) | S | Open |
-| 1.3 | `CC` default and `make podman` use `mos-nes-mmc3-clang`; `AGENTS.md` (runtime model, build), plan 7a and the `hud.h` comment describe the IRQ split | docs match code | S | Open |
+| 1.1 | Port as in the spike: `main.c` `mapper_init()` (`disable_irq`, `CLI`, PRG mode 0, `CHR_A12_INVERT`, 6 CHR banks, `MIRROR_VERTICAL`, IRQ pointer); `hud_scroll()` builds `{22, 0xF0, ctrl, 0xF5, x, 0xFF}` (`ctrl` = `PPU_CTRL_BASE` from `game.h` plus the nametable bit); `MAPPER_PRG_ROM_KB(64)`, `MAPPER_CHR_ROM_KB(8)` | `make test` unchanged and green; ROM is 73,744 bytes | S | Done |
+| 1.2 | Delete sprite 0: `hud_sprite_zero`, `hud_draw_split_target`, the OAM reserve, tiles `0x23` / `0x89` | `make test` green | S | Done |
+| 1.3 | `CC` default and `make podman` use `mos-nes-mmc3-clang`; AGENTS.md, README.md and this plan describe the IRQ split | docs match code | S | Done |
 | 1.4 | Run the ROM in a second emulator (Nestopia, `AGENTS.md` Run) and look at the HUD; real hardware if a cart is available | no garbled HUD row (only the user can judge this; Mesen is the only emulator checked) | S | Open |
 
 ### M2. Game loop skeleton
@@ -295,6 +299,7 @@ Rules for every step: it ends with `make test` green; logic gets a check (`tests
 | 2.4 | Clock: `time_left` (u16 frames, `GAME_TIME_S` = 600), `clock_add/sub/tick`, HUD `TIME mm:ss`, crash and contact cost `HIT_TIME_PENALTY_S`, hacks give `HACK_TIME_BONUS_S`; at 0 the game-over screen (score, rank, PRESS A TO RESTART) | smoke test: the clock starts full, a crash costs exactly the penalty, time up ends the game, the screen shows score and rank, A restarts with a full clock | M | Done |
 | 2.5 | Warp at 88 MPH: 62 frames: the palette brightens (`pal_bright`), the HUD year rolls 1985-1989 and `sfx_warp` plays, at frame 30 the room is drawn at full white, then it fades back; obstacles frozen; the clock is stopped | smoke test: 88 MPH starts the warp, it ends in the room showing 1990 | M | Draft (one fixed year pair; no year table) |
 | 2.6 | A room after the warp | room 1 replaces the planned placeholder | S | Done |
+| 2.8 | Time map before each race (8a.8): eras on a line, finished ones green, Geeko blinking over the next, A or Start skips after `MAP_SKIP_FRAMES`, else it ends after `MAP_FRAMES`; the epoch (era counter) lives in `progress.c`; the boss's map ends the game with TO BE CONTINUED | `tests/map.lua`: the map, the blinking, the skip rules, the era progress, the ending | M | Done |
 | 2.7 | Story screens: text-only renderer `story_show(id)` and a text table (intro, one per epoch, pre-boss, ending) | each screen appears in sequence and Start advances; glyph test | M | Open |
 
 ### M3. Era graphics foundation (MMC3 banking)
@@ -317,7 +322,7 @@ Design of the rooms themselves (maps, foes, numbers): section 8a. Modules: `room
 | 4.1a | `tools/check_rooms.py` (rooms as rectangles, reachability check against the 8a.2 rules, ASCII maps) and `tools/build_rooms.py` (generates `assets/rooms.h`, refuses an unreachable room); a Makefile rule rebuilds `rooms.h` | `python3 tools/check_rooms.py` passes for the five rooms; the build generates room 1 | M | Done |
 | 4.2 | `room_load(id)`: `ppu_off`, room palette, rectangles, terminals, gate, attribute table, HUD text, Geeko placed | `tests/room.lua`: HUD, floor, terminals and gate tiles, start position | S | Done |
 | 4.3 | `hero.c` horizontal movement with inertia (accel `0x18`, max `0x200`, friction `0x10`, skid `0x30`) | measured: 23 frames to full speed, 33 frames and 31 px to stop | M | Done |
-| 4.4 | Gravity, jump with variable height, tile collision per axis (floor, walls, ceiling), falling off ledges | tests: apex 49.2 px, a tap is shorter, the head hits a platform, landing on a platform, the screen edge is a wall | L | Done |
+| 4.4 | Gravity, jump with variable height, tile collision per axis (floor, walls, ceiling), falling off ledges; the jump, fall and run code is `geeko.c`, shared with the race | tests: apex 49.2 px (race and room), a tap is shorter, the head hits a platform, landing on a platform, the screen edge is a wall | L | Done |
 | 4.5 | Facing: left-facing metasprites (flip attribute `0x40`), hack pose = the duck pose | screenshots | S | Done |
 | 4.6 | Terminals: zone, **hold B** hack meter (4-tile bar through the VRAM buffer), D-pad ignored while holding, release resets, tick every 8 frames (`sfx_beep`), completion gives time, points and `sfx_warp` | tests: release resets, 60 frames hack it (+10 s, +100 points, tiles turn green) | M | Done (no dedicated sound, no popup) |
 | 4.7 | Gate: opens when every terminal is hacked (tile swap); touching it ends the room, shows the result card (race time, terminals, clean-room bonus or none, score, rank), then A starts the next race | tests: the gate stays shut with one terminal left, opens with two, the card shows | S | Done |
@@ -330,7 +335,7 @@ Design of the rooms themselves (maps, foes, numbers): section 8a. Modules: `room
 |---|---|---|---|---|
 | 5.1 | `foe.c`: up to 4 slots, `struct Foe` with `x, y, width, height` first (for `check_collision`), the 4 behaviours of 8a.4 (patrol, hover on a sine table, stationary hazard, spawner) driven by the room's foe list | each behaviour has a test that reads its position over N frames | L | Open (only the drone's patrol exists, inside `room.c`) |
 | 5.2 | Hero vs foe: contact = `progress_hit()` (`HIT_TIME_PENALTY_S` and `INVULN_FRAMES`), `hero_knock()`, `sfx_crash()`, room no longer clean. No death, no respawn | test: a touch costs the penalty and starts the invulnerability | M | Done for the drone |
-| 5.3 | Sprite budget in rooms | the OAM per-scanline check also runs in the worst room: at most 8 | S | Open |
+| 5.3 | Sprite budget in every scene | `tests/sprites.lua` measures the busiest scanline from OAM: race 6, crash burst 7, warp 8, room 4, map 2; add the worst room and the boss when they exist | S | Done for today's scenes |
 | 5.4 | Moving platforms (carry Geeko) and mines, only when an era needs them (2010, 2020) | test: Geeko on a moving platform moves with it | M | Open |
 | 5.5 | Guard vision cone | **cut by default** | - | Cut |
 
@@ -585,6 +590,14 @@ Score measures what the clock does not: flow, speed, no hits.
 * **Result card** after each room: race time, terminals, clean-room bonus or none, score, rank.
 * `score` is a 16-bit integer: it saturates at 65,535 (`score_add()`); a flawless game is about 40% of that.
 
+### 8a.8 Backgrounds and the time map (built 2026-10-19)
+
+**Backgrounds** (decided): the race has a **blue sky** (`C_SKY_BLUE` 0x11 in `palettes.h`: the first colour of every race palette is the screen's background colour); rooms are **black** (`room_bg_palette`); the time map is black too. The test checks the background colour (palette RAM entry 0): `0x11` in the race, `0x0f` in a room and on the map.
+
+**The time map** (`map.c`, `gfx.c`; shown after the title and after every result card, before the race): five nodes on a line at columns 4, 10, 16, 22, 28 (2x2 tiles, row 10) for 1990, 2000, 2010, 2020 and the boss (2054), a dotted path between them, the years under the nodes, "NEXT STOP" and the era's name (UNIX LABS, DOT-COM FARM, CLOUD CLEANROOM, AI EDGE, THE MAINFRAME) below, PRESS A TO GO. Eras already played are green with a tick, the next ones blue, the boss is a red eye. **Geeko (the riding sprite) blinks over the next node** (8 frames on, 8 off). The HUD stays on top (the clock is stopped). It stays `MAP_FRAMES` (180 = 3 s); A or Start skips it after `MAP_SKIP_FRAMES` (20), so the press that started the game cannot skip it. The boss's map ends the game with TO BE CONTINUED, score and rank (the boss is not built). The era counter is `epoch` in `progress.c` (0-3 the eras, 4 the boss); the HUD year, the warp's year roll and the room's hack time follow it.
+
+Terminals and node icons are 2x2 tiles on even rows and columns, so each can have its own palette (the attribute table has one palette per 2x2 tiles); `gfx_attr_set()` sets it.
+
 ---
 
 ## 8b. Boss design (detailed): THE MAINFRAME
@@ -637,6 +650,7 @@ An agent type belongs to a tier; a **lane** is (tier, side): agents of that tier
 
 * HUD row 1: `THE MAINFRAME` followed by one `#` per unhacked terminal; row 2: `TIME mm:ss` and score.
 * **Overload** (sixth terminal): 180 frames. Agents vanish, the eye cracks in 3 tile stages, the palette flashes every 8 frames, and the room shakes while the HUD stays still: the shake is the IRQ array `{22, 0xF5, shake_x, 0xFF}` (an MMC3 gain: the sprite-0 split could not shake only the room). Nametable B's left and right edge columns must be filled so the shake shows no garbage. Then the `WIN` row: ending story screen and the time left.
+* **Background colour (proposed, D11):** a **deep violet** (`0x03`) rather than black: it makes the red eye, the orange agents and the green terminals stand out, and it is clearly not the black of the other rooms. Alternatives: a dark crimson (`0x06`, danger, but the red eye blends in) or the room black with red flashes. The overload flashes the whole palette (`pal_bright`) as the warp does.
 * **Tile budget (estimate, tight):** head about 12 + eye 2 frames x 16 = 32 + terminal 8 + cracks about 12 = 64 decor tiles, which is why the decor range is 96 tiles (`0x80-0xBF` and `0xE0-0xFF`).
 
 ### 8b.4 Tests
@@ -653,6 +667,9 @@ Decided (user, 2026-10-19):
 * **Game-over screen** shows GAME OVER, score, rank and PRESS A TO RESTART.
 * **Score** (8a.7): points scale with speed, dodge streak multiplier, hacked terminals, clean rooms, a finish bonus; ranks; a flawless game is tuned to about 26,000.
 * **Balance numbers are plain `#define`s in `src/tuning.h`.**
+* **A time map** is shown between levels with Geeko blinking over the next era (8a.8).
+* **Backgrounds:** blue sky for the race, black for the rooms.
+* **One Geeko body** (`geeko.c`) serves every level; the code is kept free of duplicated parts (shared helpers: `geeko.c`, `gfx.c`, the test `lib.lua`).
 * **Mapper: MMC3** (section 7a).
 
 Decided earlier:
@@ -670,6 +687,7 @@ Still open:
 | D4 | Rooms per epoch (10 minutes fits one; more rooms need a longer clock, and the 16-bit counter stops at 18:12) | 1 | 6.1 |
 | D5 | Branding: the openSUSE logo and AI agents named after real products in the concept art. Proposed renames: **PINCHBOT** (orange blocky crab), **WHIRLY** (teal swirl), **TWINKLE** (cyan star), redrawn rather than copied (`concept-art/PROMPTS.md`). Check the openSUSE logo guidelines | proposed names | 7.2 |
 | D9 | Time economy amounts (`tuning.h`: penalty 5 s, bonus 10 s, cap 600 s). A flawless run needs about 4:30 of the 10:00 (8a.6); a first-time player at twice the guessed room and boss times is near the limit | keep the proposed amounts | tuning |
+| D11 | Boss background colour: deep violet (proposed), crimson or black (8b.3) | deep violet `0x03` | 7.1 |
 | D10 | Hit knockback and invulnerability (10 frames of knockback, `INVULN_FRAMES` 60) are my values | keep | tuning |
 
 ---
