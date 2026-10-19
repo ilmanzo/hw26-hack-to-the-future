@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents and human contributors working i
 
 ## Project
 
-NES endless runner ("Hack to the Future: Geeko McFly", openSUSE Hack Week 26). Direction: `plan.md`. History and tool notes: `DIARY.md`. Session memory notes (decisions, references, feedback): `memory/MEMORY.md`. NROM-256 (mapper 0, 32KB PRG + 8KB CHR), C via `llvm-mos` + `neslib` + `nesdoug`. No tests, no linter, no git repo.
+NES endless runner ("Hack to the Future: Geeko McFly", openSUSE Hack Week 26). Direction: `plan.md`. History and tool notes: `DIARY.md`. Session memory notes (decisions, references, feedback): `memory/MEMORY.md`. NROM-256 (mapper 0, 32KB PRG + 8KB CHR), C via `llvm-mos` + `neslib` + `nesdoug`. Tests: `make test` (headless Mesen2). No linter.
 
 ## Build
 
@@ -13,9 +13,10 @@ make                # builds hacktothefuture.nes (regenerates assets/graphics.ch
 make clean          # removes .nes and assets/graphics.chr only (not .nes.elf / .mlb)
 make CC=<path>      # override compiler
 make test           # headless smoke test in Mesen2 (needs a built ROM, see below); exit 0 = pass
+python3 tools/check_rooms.py [-v]   # room maps of plan.md 8a/8b reachable? (jump limits from player.c); exit 1 = no
 ```
 
-- `CC` is hardcoded to `/home/andrea/.local/llvm-mos/bin/mos-nes-nrom-clang`. That path does not exist on this machine; build via the container instead (below) or override `CC`.
+- `CC` is hardcoded to `/home/andrea/.local/llvm-mos/bin/mos-nes-nrom-clang`. That path does not exist on this machine; use `make podman` (below) or override `CC`.
 - Link step also emits `hacktothefuture.nes.elf` and `hacktothefuture.mlb` (Mesen label file).
 
 ### Container build (no local llvm-mos)
@@ -23,6 +24,7 @@ make test           # headless smoke test in Mesen2 (needs a built ROM, see belo
 `Containerfile` installs llvm-mos SDK (pinned `LLVM_MOS_VERSION`, default v23.3.0) on `bci-base`. Verified: output ROM is byte-identical to the checked-in `hacktothefuture.nes`.
 
 ```bash
+make podman         # = the two commands below
 podman build -t llvm-mos -f Containerfile .
 podman run --rm -v "$PWD":/src:Z llvm-mos make CC=mos-nes-nrom-clang
 ```
@@ -31,7 +33,7 @@ The SDK tarball is verified against `LLVM_MOS_SHA256` (sha256 of `llvm-mos-linux
 
 ### Headless testing (Mesen2)
 
-Mesen2 2.1.1 is installed at `~/.local/opt/mesen2/Mesen` (Lua scripting, scriptable input, RAM reads, screenshots). `make test` runs `tests/smoke.lua` (boot, Start, duck, jump, collisions, game over, restart, split scanline; screenshots go to `tests/out/`, gitignored). `XFAIL` lines are known bugs, they don't fail the run. Raw invocation:
+Mesen2 2.1.1 is installed at `~/.local/opt/mesen2/Mesen` (Lua scripting, scriptable input, RAM reads, screenshots). `make test` runs `tests/smoke.lua` (boot, Start, duck, jump, collisions, drones, game over, HUD text, title glyphs, sprites per scanline, restart, split scanline; screenshots go to `tests/out/`, gitignored). `XFAIL` lines (`xfail()` in the script) are known bugs, they don't fail the run; none open now. Raw invocation:
 
 ```bash
 LD_PRELOAD=/usr/lib64/libstdc++.so.6 ~/.local/opt/mesen2/Mesen --testRunner \
@@ -45,6 +47,7 @@ LD_PRELOAD=/usr/lib64/libstdc++.so.6 ~/.local/opt/mesen2/Mesen --testRunner \
 - `print()` goes to stdout; `emu.stop(code)` sets the exit code. Set input inside an `emu.eventType.inputPolled` callback; do frame logic in `endFrame`.
 - Mesen's working directory is not yours: pass absolute paths (the smoke test takes the project root in the `ROOT` env var).
 - Mid-frame PPU timing is observable: `emu.addMemoryCallback(fn, emu.callbackType.write, 0x2005, 0x2005)` plus `emu.getState()["ppu.scanline"]` (that is how the split position is tested).
+- PPU bus: `emu.memType.nesPpuMemory` (pattern tables at `$0000`, nametable A at `$2000`); OAM: `emu.memType.nesSpriteRam`.
 - RAM addresses come from `hacktothefuture.mlb` (e.g. `game_state` = `$36`, `score` = `$40-41`); read with `emu.read(addr, emu.memType.nesInternalRam)`.
 
 ### Run
@@ -77,6 +80,7 @@ Three pieces must stay in sync; changing one usually means touching the others:
    | `screens` | Background nametable, title screen, CRASH banner |
    | `sfx` | FamiTone2 music (`sfx_music_start/stop`) and sound effects (`sfx_jump`, ...) |
    | `game.h` | Constants and `struct Box` shared by several modules |
+   | `tuning.h` | Balance numbers as plain numeric `#define`s (clock, penalties, race rate, hack times); tests will read it; not used by the code yet |
    | `sprites.h`, `palettes.h` | Data: metasprite arrays (`dx, dy, tile, attr`, `128`-terminated) and palettes. Sprite attr palette index selects the sub-palette (0 Geeko, 1 tumbleweed, 2 bug/drone, 3 FX) |
 
    The Makefile compiles every `src/*.c`; a new module needs no Makefile change. Cross-module calls are not inlined (no LTO); the main loop still fits in a frame (`make test` checks that).
@@ -90,7 +94,7 @@ Three pieces must stay in sync; changing one usually means touching the others:
 - Speed derives from `mph` (20→88, 88 triggers warp); `speed_px = 2 + mph/25`.
 - OAM draw order matters (`render.c`): sprite 0 first, then obstacles, Geeko, fire trail. Past 8 sprites per scanline the PPU drops the lowest-priority ones; Geeko is 2 tiles wide, but keep the fire trail last.
 - Collision: `nesdoug check_collision()` takes pointers to structs whose first four bytes are `x, y, width, height`. `struct Box` (game.h) and `struct Obstacle` (obstacles.c) keep those first on purpose; do not reorder.
-- Geeko-art-dependent hand-tuned numbers: hitbox (`player.c`: x+2, w 12; standing y+1, h 15; crouched y+6, h 10), crash star at x+4, y+2, fire trail at y+7 / y+8 (`render.c`), and `GROUND_Y` 155 (`game.h`, sprite top; the board's bottom row sits at y 170 as before). Both poses keep the board in the same rows so it does not jump when ducking. Re-check these if you redraw Geeko.
+- Geeko-art-dependent hand-tuned numbers: hitbox (`player.c`: x+2, w 12; standing y+1, h 15; crouched y+6, h 10), crash star at x+4, y+2, fire trail at y+7 / y+8 (`render.c`), drone flying y 147 (`obstacles.c`: its box must overlap the standing hitbox but not the crouched one), and `GROUND_Y` 155 (`game.h`, sprite top; the board's bottom row sits at y 170 as before). Both poses keep the board in the same rows so it does not jump when ducking. Re-check these if you redraw Geeko.
 - Sound: FamiTone2 (in neslib's NMI). Music = one track (`assets/audio/chill.ftm`, CC0, placeholder) that plays while `STATE_PLAYING` and stops on the crash; the title screen is silent. Effects use slots 0-3 by APU channel: Pulse1 jump/duck, Pulse2 beep, Triangle warp, Noise crash; FamiTone2 has no volume column and few effects, so the song was cut down on export (see `plan.md` section 7b). `assets/audio/*.s` are generated (FamiStudio in a container, `tools/export_audio.sh`); the `.ftm` / `.txt` next to them are the sources. `tests/smoke.lua` reads the emulated APU state to check that music plays, the title is silent and everything is silent after a crash.
 
 ### Refactoring safety net
@@ -99,6 +103,6 @@ Three pieces must stay in sync; changing one usually means touching the others:
 
 ## Gotchas
 
-- Font only covers: space `! " # % ( ) + - . / :`, `0-9`, `A-Z`. Anything else (lowercase, `'`, `,`, …) renders as a blank tile. Current title strings `"GEEKO MCFLY '85"` and `"WHERE WE GO, NO ROADS!"` contain `'` and `,`, so those glyphs are invisible. Add the glyph to `FONT_RAW` in `build_chr.py` to fix.
+- Font only covers: space `! " # % ' ( ) + , - . / :`, `0-9`, `A-Z`. Anything else (lowercase, …) renders as a blank tile; add the glyph to `FONT_RAW` in `build_chr.py`. `make test` fails if a title-screen character has no glyph.
 - `vram_write` lengths in `screens.c` and `hud.c` are hand-counted literals; change a string and its length together.
 - Audio is FamiTone2 (draft, 2026-10-16). Never poke the APU registers (`POKE(0x40xx, ...)`) from game code: the engine rewrites every channel each frame, so a raw poke lasts one frame at most (and before the engine, a halt bit in a raw poke made the crash noise ring forever). New effects go in `assets/audio/sfx.txt` (one song per effect, in the order of the `SFX_*` ids in `sfx.c`), then `tools/export_audio.sh`.
