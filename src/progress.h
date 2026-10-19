@@ -17,6 +17,7 @@ extern unsigned int  dodges;      // obstacles passed untouched this game
 extern unsigned char mult;        // score multiplier, 1..MULT_MAX
 extern unsigned int  time_left;   // the clock, in frames (16 bits: 65535 frames = 1092 s at most)
 extern unsigned char invuln;      // frames of invulnerability left after a hit
+extern unsigned char epoch;       // 0-3: the era being played (the race before it, the room in it); 4: the boss
 extern unsigned char year_idx;    // index into the year names, see year_text()
 extern unsigned int  race_frames; // frames of the current race (for the result card)
 
@@ -42,5 +43,6 @@ void progress_game_over(void);
 
 const char *rank_name(void);      // 13 characters, padded, from the score
 const char *year_text(void);      // 4 characters, from year_idx
+unsigned int year_value(unsigned char idx);   // 1985, 1990, 2000, 2010, 2020
 
 #endif // PROGRESS_H

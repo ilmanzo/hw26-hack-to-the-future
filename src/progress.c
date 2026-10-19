@@ -11,6 +11,7 @@ unsigned int  dodges = 0;
 unsigned char mult = 1;
 unsigned int  time_left = GAME_TIME_S * 60u;
 unsigned char invuln = 0;
+unsigned char epoch = 0;
 unsigned char year_idx = 0;
 unsigned int  race_frames = 0;
 
@@ -26,6 +27,7 @@ void progress_reset(void) {
     score = 0;
     dodges = 0;
     time_left = GAME_TIME_S * 60u;
+    epoch = 0;
     year_idx = 0;
     race_start();
 }
@@ -125,4 +127,9 @@ const char *year_text(void) {
     static const char years[][4] = { {'1','9','8','5'}, {'1','9','9','0'}, {'2','0','0','0'},
                                      {'2','0','1','0'}, {'2','0','2','0'} };
     return years[year_idx];
+}
+
+unsigned int year_value(unsigned char idx) {
+    static const unsigned int years[] = { 1985, 1990, 2000, 2010, 2020 };
+    return years[idx];
 }

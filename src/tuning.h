@@ -40,6 +40,11 @@
 // Development: on the title screen, SELECT starts room 1 directly (set to 0 for a release build).
 #define DEV_SELECT_ROOM      1
 
+// The time map shown before each level: it stays this many frames, and A or Start skips it after
+// MAP_SKIP_FRAMES.
+#define MAP_FRAMES           180
+#define MAP_SKIP_FRAMES      20
+
 // Hacking: hold B this long next to a terminal.
 #define HACK_FRAMES_1990     60
 #define HACK_FRAMES_2000     75

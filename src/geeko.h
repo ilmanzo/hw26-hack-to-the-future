@@ -34,7 +34,7 @@ struct Geeko {
 #define GEEKO_CROUCH_H   10
 
 // Jump if standing and A or Up was pressed this frame (plays the jump sound). Returns 1 if it did.
-unsigned char geeko_jump(struct Geeko *g, unsigned char pad, unsigned char pad_new);
+unsigned char geeko_jump(struct Geeko *g, unsigned char pad_new);
 
 // Vertical speed for this frame: a jump button let go early cuts the jump, gravity, fall speed cap;
 // standing keeps vy at 0. Call before moving g->y.

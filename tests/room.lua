@@ -19,18 +19,7 @@ local HACK_FRAMES = tuning("HACK_FRAMES_1990")
 local BONUS = tuning("HACK_TIME_BONUS_S") * 60
 local PENALTY = tuning("HIT_TIME_PENALTY_S") * 60
 
-local function enter_room()
-  T.poke(sym.game_state, STATE.TITLE)     -- the title logic is all that is needed to start a room
-  press({select = true}, 3)
-  return wait_until(function() return u8("game_state") == STATE.ROOM end, 10)
-end
-
-local function hold_b_until(fn, max)
-  T.hold({b = true})
-  local ok = wait_until(fn, max)
-  T.hold({})
-  return ok
-end
+local enter_room, hold_b_until = T.enter_room, T.hold_b_until
 
 local function body()
   wait(30)
@@ -134,20 +123,19 @@ local function body()
   check(T.nt_text(8, 9, 13) == "TERMINALS 2/2", "the card shows the terminals")
   T.shot("room-result")
   press({a = true}, 2)
-  check(wait_until(function() return u8("game_state") == STATE.PLAYING end, 10), "A on the card starts the next race")
-  check(T.nt_text(1, 1, 25) == "TIME " .. T.nt_text(6, 1, 5) .. "  YEAR 1985  X1", "the next race is in 1985 again (draft)")
+  check(wait_until(function() return u8("game_state") == STATE.MAP end, 10), "A on the card shows the time map")
+  check(u8("epoch") == 1, "the next era is 2000 (epoch " .. u8("epoch") .. ")")
+  wait(tuning("MAP_SKIP_FRAMES") + 2)
+  press({a = true}, 2)
+  check(wait_until(function() return u8("game_state") == STATE.PLAYING end, 10), "A skips the map and starts the next race")
+  wait(3)
+  check(T.nt_text(1, 1, 25) == "TIME " .. T.nt_text(6, 1, 5) .. "  YEAR 1990  X1", "the next race is in 1990 (found '" .. T.nt_text(1, 1, 25) .. "')")
 
   -- A clean run gets the bonus: hack both without a hit.
   check(enter_room(), "enter the room again")
   wait(3)
   check(u16("score") == 0 and u16("time_left") > tuning("GAME_TIME_S") * 60 - 20, "a fresh game: score 0, full clock")
-  teleport(200, 160); wait(3)
-  hold_b_until(function() return hacked() == "1" end, HACK_FRAMES + 10)
-  teleport(128, 128); wait(3)
-  hold_b_until(function() return hacked() == "2" end, HACK_FRAMES + 10)
-  teleport(4, 192)
-  wait_until(function() return u8("game_state") == STATE.RESULT end, 10)
-  wait(3)
+  T.finish_room()
   check(T.nt_text(8, 10, 16) == "CLEAN ROOM BONUS", "a room without a hit gets the clean-room bonus")
   check(u16("score") == 2 * tuning("TERMINAL_POINTS") + tuning("CLEAN_ROOM_POINTS"),
         "score = 2 terminals + clean room (" .. u16("score") .. ")")

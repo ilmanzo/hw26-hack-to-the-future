@@ -271,6 +271,27 @@ def make_bg_table():
     put_sprite(tiles, 0x90, terminal('2'))
     put_sprite(tiles, 0x94, terminal('3'))
 
+    # Time map (src/map.c): 0xA4 path, 0xA8-0xAB era waiting (blue), 0xAC-0xAF era done (green),
+    # 0xB0-0xB3 the boss (palette 2 of the room palette: 1 red, 2 orange, 3 green)
+    tiles[0xA4] = encode_tile(["        ", "        ", "        ", "33  33  ", "33  33  ", "        ", "        ", "        "])
+    def node(fill, ink, mark):
+        art = []
+        for y in range(16):
+            row = ''
+            for x in range(16):
+                r2 = (x - 7.5) ** 2 + (y - 7.5) ** 2
+                row += ' ' if r2 > 56 else ('1' if r2 > 36 else fill)
+            art.append(list(row))
+        for (x, y) in mark:
+            art[y][x] = ink
+        return [''.join(r) for r in art]
+    check = [(5, 8), (6, 9), (7, 10), (8, 9), (9, 8), (10, 7), (11, 6)]          # a tick
+    check = [(x, y) for (x, y) in check] + [(x + 1, y) for (x, y) in check]
+    eye = [(x, y) for x in range(6, 10) for y in range(6, 10)]                    # a pupil
+    put_sprite(tiles, 0xA8, node('2', '2', []))
+    put_sprite(tiles, 0xAC, node('3', '1', check))
+    put_sprite(tiles, 0xB0, node('1', '3', eye))
+
     # 0x98-0x9D gate closed (red and orange bars), 0x9E-0xA3 gate open (green arrow); 2 wide, 3 tall
     # (palette 2 of the room: 1 red, 2 orange, 3 green)
     def gate(open_):

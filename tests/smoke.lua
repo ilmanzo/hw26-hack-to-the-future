@@ -18,8 +18,11 @@ end, emu.callbackType.write, 0x2005, 0x2005)
 -- Second HUD text row as the PPU shows it (nametable A row 2, columns 1..29).
 local function hud_row() return T.nt_text(1, 2, 29) end
 
-local function start_game(button)   -- Start, or another button such as "a"
+local function start_game(button)   -- Start, or another button such as "a": the map, skipped, then the race
   press({[button or "start"] = true}, 3)
+  if not wait_until(function() return u8("game_state") == STATE.MAP end, 10) then return false end
+  wait(tuning("MAP_SKIP_FRAMES") + 2)
+  press({a = true}, 2)
   return wait_until(function() return u8("game_state") == STATE.PLAYING end, 10)
 end
 
@@ -73,6 +76,7 @@ local function body()
   local full = tuning("GAME_TIME_S") * 60
   check(u16("time_left") > full - 20 and u16("time_left") <= full, "the clock starts full")
   check(T.nt_text(1, 1, 25) == "TIME 10:00  YEAR 1985  X1", "HUD row 1 shows the clock, year and multiplier (found '" .. T.nt_text(1, 1, 25) .. "')")
+  check(T.palette(0) == 0x11, "the race has a blue sky (background colour " .. string.format("%02x", T.palette(0)) .. ")")
   poke(sym.spawn_timer, 255)
 
   -- The HUD occupies scanlines 8..23 (tile rows 1-2); the scroll split must land on 23 so the
@@ -247,6 +251,7 @@ local function body()
   -- The warp ends in the room (1990).
   check(wait_until(function() return u8("game_state") == STATE.ROOM end, 120), "the warp ends in the room")
   wait(3)
+  check(T.palette(0) == 0x0f, "a room has a black background (background colour " .. string.format("%02x", T.palette(0)) .. ")")
   check(T.nt_text(1, 1, 25) == T.nt_text(1, 1, 5) .. T.nt_text(6, 1, 5) .. "  YEAR 1990  X" .. T.nt_text(25, 1, 1),
         "the HUD shows the room's year, 1990 (found '" .. T.nt_text(1, 1, 25) .. "')")
   check(T.nt_text(1, 2, 8) == "HACK 0/2", "the HUD shows the terminals to hack")

@@ -12,7 +12,7 @@ void title_screen_draw(void);
 
 // Queue the game-over text (GAME OVER, score, rank, PRESS A TO RESTART) over the sky through the
 // direct writes (turns rendering off and on again).
-void game_over_show(void);
+void game_over_show(unsigned char finished);   // finished: TO BE CONTINUED instead of GAME OVER
 
 // The card after a room: terminals, race time, clean-room bonus, score, rank. Turns rendering off
 // and on again.

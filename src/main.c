@@ -16,6 +16,7 @@
 
 #include "hero.h"
 #include "hud.h"
+#include "map.h"
 #include "obstacles.h"
 #include "palettes.h"
 #include "player.h"
@@ -33,21 +34,27 @@
 #define STATE_WARP         3   // flash at 88 MPH, the year rolls, the room appears
 #define STATE_ROOM         4
 #define STATE_RESULT       5   // the card after a room
+#define STATE_MAP          6   // the time map before each level
+
+#define SCENE_RACE         0   // which sprites to draw
+#define SCENE_ROOM         1
+#define SCENE_BLANK        2   // none: cards, the ending
 
 #define CRASH_POSE_FRAMES  20   // the crash pose and burst last this long after a hit
 #define WARP_FLASH_FRAMES  30   // brightening; then as long again (plus a bit) to fade back
 
 static unsigned char game_state = STATE_TITLE;
-static unsigned char in_room_scene;   // sprites of a room, not of the race
+static unsigned char scene;           // SCENE_*
 static unsigned char warp_timer;
-static unsigned char room_id;         // only room 0 exists so far
+static unsigned char map_timer;
 
 // A fresh race: playfield, Geeko, obstacles, 20 MPH. Score and clock carry over.
 static void race_begin(void) {
     player_reset();
     race_start();
     obstacles_reset();
-    in_room_scene = 0;
+    scene = SCENE_RACE;
+    year_idx = epoch;
 
     ppu_off();
     pal_bg(bg_palette);
@@ -57,33 +64,41 @@ static void race_begin(void) {
     ppu_on_all();
 }
 
-// A new game: score 0, full clock, first race, music.
+// The time map for the era about to start; the race follows.
+static void map_begin(void) {
+    year_idx = epoch;
+    map_timer = 0;
+    scene = SCENE_BLANK;
+    map_show(epoch);
+    game_state = STATE_MAP;
+}
+
+// A new game: score 0, full clock, the map, music.
 static void session_start(void) {
     progress_reset();
-    race_begin();
     sfx_music_start();
     sfx_beep();
+    map_begin();
 }
 
 static void room_begin(void) {
-    year_idx = 1;
-    room_load(room_id);
+    year_idx = epoch + 1;
+    room_load(epoch);
     ppu_on_all();
-    in_room_scene = 1;
+    scene = SCENE_ROOM;
 }
 
-static void game_over_begin(void) {
+static void game_over_begin(unsigned char finished) {
     sfx_music_stop();
     game_state = STATE_GAMEOVER;
     progress_game_over();
-    game_over_show();
+    game_over_show(finished);
 }
 
 static void state_title(unsigned char pad_new) {
     if (pad_new & (PAD_START | PAD_A)) {
         seed_rng();
         session_start();
-        game_state = STATE_PLAYING;
     }
 #if DEV_SELECT_ROOM
     else if (pad_new & PAD_SELECT) {   // playtest: straight into the room
@@ -113,7 +128,7 @@ static void state_playing(unsigned char pad, unsigned char pad_new) {
     }
 
     if (!clock_tick()) {
-        game_over_begin();
+        game_over_begin(0);
     } else if (mph >= MPH_WARP) {
         game_state = STATE_WARP;
         warp_timer = 0;
@@ -127,7 +142,10 @@ static void state_warp(void) {
     ++warp_timer;
     if (warp_timer < WARP_FLASH_FRAMES) {
         pal_bright(4 + warp_timer / 8);
-        if ((warp_timer & 3) == 0) hud_year_show(1985 + warp_timer * 5 / WARP_FLASH_FRAMES);
+        if ((warp_timer & 3) == 0) {
+            unsigned int from = year_value(epoch), to = year_value(epoch + 1);
+            hud_year_show(from + (to - from) * warp_timer / WARP_FLASH_FRAMES);
+        }
     } else if (warp_timer == WARP_FLASH_FRAMES) {
         pal_bright(8);
         room_begin();
@@ -145,7 +163,7 @@ static void state_room(unsigned char pad, unsigned char pad_new) {
     room_update(pad);
 
     if (!clock_tick()) {
-        game_over_begin();
+        game_over_begin(0);
     } else if (room_done()) {
         if (room_clean()) score_add(CLEAN_ROOM_POINTS);
         result_card_draw(room_clean(), room_hacked(), room_total());
@@ -157,16 +175,30 @@ static void state_room(unsigned char pad, unsigned char pad_new) {
 
 static void state_result(unsigned char pad_new) {
     if (pad_new & (PAD_START | PAD_A)) {
-        year_idx = 0;       // draft: only one room, so the next race starts over in 1985
-        race_begin();
-        game_state = STATE_PLAYING;
+        ++epoch;            // the next era; epoch 4 is the boss
+        map_begin();
+    }
+}
+
+// The map stays MAP_FRAMES (A or Start skips it after MAP_SKIP_FRAMES), then the race starts. The
+// boss is not built yet: its map ends the game with TO BE CONTINUED.
+static void state_map(unsigned char pad_new) {
+    ++map_timer;
+    hud_update(0, 0, 0);
+    if (map_timer >= MAP_FRAMES || (map_timer >= MAP_SKIP_FRAMES && (pad_new & (PAD_START | PAD_A)))) {
+        if (epoch >= 4) {
+            scene = SCENE_BLANK;
+            game_over_begin(1);
+        } else {
+            race_begin();
+            game_state = STATE_PLAYING;
+        }
     }
 }
 
 static void state_gameover(unsigned char pad_new) {
     if (pad_new & (PAD_START | PAD_A)) {
         session_start();
-        game_state = STATE_PLAYING;
     }
 }
 
@@ -202,12 +234,15 @@ int main(void) {
         case STATE_WARP:     state_warp(); break;
         case STATE_ROOM:     state_room(pad, pad_new); break;
         case STATE_RESULT:   state_result(pad_new); break;
+        case STATE_MAP:      state_map(pad_new); break;
         default:             state_gameover(pad_new); break;
         }
 
-        if (game_state == STATE_RESULT) {
+        if (game_state == STATE_RESULT || (scene == SCENE_BLANK && game_state != STATE_MAP)) {
             render_clear();
-        } else if (in_room_scene) {
+        } else if (game_state == STATE_MAP) {
+            render_map_sprites(epoch, map_timer);
+        } else if (scene == SCENE_ROOM) {
             render_room_sprites(game_state == STATE_ROOM && room_hacking());
         } else {
             render_all_sprites(game_state == STATE_PLAYING && invuln > INVULN_FRAMES - CRASH_POSE_FRAMES);

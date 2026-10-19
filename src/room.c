@@ -2,6 +2,7 @@
 #include <nesdoug.h>
 
 #include "game.h"
+#include "gfx.h"
 #include "hero.h"
 #include "hud.h"
 #include "palettes.h"
@@ -24,7 +25,8 @@
 #define MAX_TERMS        6
 #define MAX_FOES         4
 
-static const unsigned char hack_frames_by_room[N_ROOMS] = { HACK_FRAMES_1990 };
+static const unsigned char hack_frames_by_epoch[4] = { HACK_FRAMES_1990, HACK_FRAMES_2000, HACK_FRAMES_2010,
+                                                       HACK_FRAMES_2020 };
 
 static const struct RoomDef *room;
 static unsigned char hack_frames;
@@ -44,14 +46,6 @@ static unsigned int foe_min[MAX_FOES], foe_max[MAX_FOES];
 static signed char foe_dir[MAX_FOES];
 #define DRONE_SPEED      0x80      // 0.5 px/frame
 
-static unsigned char attr[64];
-
-static void attr_set(unsigned char col, unsigned char row, unsigned char pal) {
-    unsigned char i = (row >> 2) * 8 + (col >> 2);
-    unsigned char shift = ((row >> 1) & 1) * 4 + ((col >> 1) & 1) * 2;
-    attr[i] = (attr[i] & ~(3 << shift)) | (pal << shift);
-}
-
 unsigned char room_solid(unsigned char x, unsigned char y) {
     unsigned char r = y >> 3, c = x >> 3, i;
 
@@ -63,19 +57,11 @@ unsigned char room_solid(unsigned char x, unsigned char y) {
     return 0;
 }
 
-static void draw_block(unsigned char col, unsigned char row, unsigned char first, unsigned char w, unsigned char h) {
-    unsigned char x, y, t = first;
-    for (y = 0; y < h; ++y) {
-        vram_adr(NTADR_A(col, row + y));
-        for (x = 0; x < w; ++x) vram_put(t++);
-    }
-}
-
 void room_load(unsigned char id) {
     unsigned char i, y;
 
-    room = &room_defs[id];
-    hack_frames = hack_frames_by_room[id];
+    room = &room_defs[id % N_ROOMS];          // until every era has its own room, the rooms repeat
+    hack_frames = hack_frames_by_epoch[id < 4 ? id : 3];
     n_hacked = hacking = gate_open = finished = 0;
     hit_taken = 0;
     progress_room_start();
@@ -83,10 +69,7 @@ void room_load(unsigned char id) {
     ppu_off();
     pal_bg(room_bg_palette);
 
-    vram_adr(NTADR_A(0, 0));
-    vram_fill(0, 1024);                      // blank tiles and attributes (palette 0)
-
-    for (i = 0; i < 64; ++i) attr[i] = 0;
+    gfx_wipe(0);
 
     for (i = 0; i < room->n_rects; ++i) {
         const struct Rect *q = &room->rects[i];
@@ -99,18 +82,15 @@ void room_load(unsigned char id) {
     for (i = 0; i < room->n_terms; ++i) {
         unsigned char row = room->terms[i * 2], col = room->terms[i * 2 + 1];
         term_prog[i] = term_done[i] = term_fill[i] = 0;
-        draw_block(col, row - 2, TILE_TERM_IDLE, 2, 2);
-        attr_set(col, row - 2, 1); attr_set(col + 1, row - 2, 1);
-        attr_set(col, row - 1, 1); attr_set(col + 1, row - 1, 1);
+        gfx_block(col, row - 2, TILE_TERM_IDLE, 2, 2);
+        gfx_attr_set(col, row - 2, 1);
     }
 
-    draw_block(room->gate_col, room->gate_row - 3, TILE_GATE_SHUT, room->gate_w, 3);
-    for (y = room->gate_row - 3; y < room->gate_row; ++y) {
-        for (i = 0; i < room->gate_w; ++i) attr_set(room->gate_col + i, y, 2);
+    gfx_block(room->gate_col, room->gate_row - 3, TILE_GATE_SHUT, room->gate_w, 3);
+    for (y = room->gate_row - 3; y < room->gate_row; y += 2) {
+        for (i = 0; i < room->gate_w; i += 2) gfx_attr_set(room->gate_col + i, y, 2);
     }
-
-    vram_adr(0x23c0);
-    vram_write(attr, 64);
+    gfx_attr_flush();
 
     hud_draw_static(1);
 

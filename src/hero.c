@@ -95,7 +95,7 @@ void hero_update(unsigned char pad, unsigned char pad_new, unsigned char hacking
 
     // Run, jump and fall: the same code as in the race (geeko.c)
     if (!hurt_timer) geeko_run(&hero, dir);
-    if (!hacking) geeko_jump(&hero, pad, pad_new);
+    if (!hacking) geeko_jump(&hero, pad_new);
     geeko_fall(&hero, pad);
 
     move_x();

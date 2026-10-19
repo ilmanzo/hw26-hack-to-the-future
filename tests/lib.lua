@@ -11,7 +11,7 @@ T.RAM = emu.memType.nesInternalRam
 T.PPU = emu.memType.nesPpuMemory   -- pattern tables at $0000, nametable A at $2000
 T.OAM = emu.memType.nesSpriteRam
 -- game_state values, keep in step with src/main.c
-T.STATE = {TITLE = 0, PLAYING = 1, GAMEOVER = 2, WARP = 3, ROOM = 4, RESULT = 5}
+T.STATE = {TITLE = 0, PLAYING = 1, GAMEOVER = 2, WARP = 3, ROOM = 4, RESULT = 5, MAP = 6}
 
 T.sym = {}
 local mlb = io.open(ROOT .. "/hacktothefuture.mlb")
@@ -22,10 +22,12 @@ for line in mlb:lines() do
 end
 mlb:close()
 local sym, RAM = T.sym, T.RAM
-function T.u8(name)    return emu.read(sym[name], RAM) end
-function T.u16(name)   return T.u8(name) + 256 * emu.read(sym[name] + 1, RAM) end
-function T.poke(addr, v) emu.write(addr, v, RAM) end
-function T.poke16(name, v) emu.write(sym[name], v % 256, RAM); emu.write(sym[name] + 1, v // 256, RAM) end
+-- The compiler may split a one-element-used array into name.0 (see T.geeko): accept both.
+local function addr(name) return assert(sym[name] or sym[name .. ".0"], "no symbol " .. name) end
+function T.u8(name)    return emu.read(addr(name), RAM) end
+function T.u16(name)   return T.u8(name) + 256 * emu.read(addr(name) + 1, RAM) end
+function T.poke(a, v)  emu.write(a, v, RAM) end
+function T.poke16(name, v) emu.write(addr(name), v % 256, RAM); emu.write(addr(name) + 1, v // 256, RAM) end
 
 local tuning = {}
 local th = io.open(ROOT .. "/src/tuning.h")
@@ -124,6 +126,9 @@ function T.max_sprites_per_scanline()
   return max
 end
 
+-- A palette RAM entry ($3F00-$3F1F); entry 0 is the background colour.
+function T.palette(i) return emu.read(i, emu.memType.nesPaletteRam) end
+
 function T.shot(name)
   local f = io.open(ROOT .. "/tests/out/" .. name .. ".png", "wb")
   if f then f:write(emu.takeScreenshot()); f:close() end
@@ -140,6 +145,37 @@ function T.wait_until(fn, max)
     coroutine.yield()
   end
   return fn()
+end
+
+-- Room helpers. On the title screen SELECT starts room 1 (DEV_SELECT_ROOM); the title logic runs in
+-- any state once game_state is poked back to the title.
+function T.enter_room()
+  T.poke(sym.game_state, T.STATE.TITLE)
+  T.press({select = true}, 3)
+  return T.wait_until(function() return T.u8("game_state") == T.STATE.ROOM end, 10)
+end
+
+function T.hold_b_until(fn, max)
+  held = {b = true}
+  local ok = T.wait_until(fn, max)
+  held = {}
+  return ok
+end
+
+-- Hack both terminals of room 1 by teleporting Geeko next to them (the HUD digit counts them), then
+-- put Geeko in the open gate. Returns once the result card is up.
+function T.finish_room()
+  local hero = T.geeko("hero")
+  local max = T.tuning("HACK_FRAMES_2020") + 10        -- the longest era
+  local function hacked() return T.nt_text(6, 2, 1) end
+  hero.teleport(200, 160); T.wait(3)
+  T.hold_b_until(function() return hacked() == "1" end, max)
+  hero.teleport(128, 128); T.wait(3)
+  T.hold_b_until(function() return hacked() == "2" end, max)
+  hero.teleport(4, 192)
+  local ok = T.wait_until(function() return T.u8("game_state") == T.STATE.RESULT end, 10)
+  T.wait(3)
+  return ok
 end
 
 -- Run body() as the test. max_frames is the watchdog (a hung run would never stop).

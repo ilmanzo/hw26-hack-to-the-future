@@ -6,8 +6,7 @@
 #include "sfx.h"
 #include "sprites.h"
 
-unsigned char geeko_jump(struct Geeko *g, unsigned char pad, unsigned char pad_new) {
-    (void)pad;
+unsigned char geeko_jump(struct Geeko *g, unsigned char pad_new) {
     if (g->grounded && (pad_new & (PAD_A | PAD_UP))) {
         g->vy = -GEEKO_JUMP;
         g->grounded = 0;

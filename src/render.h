@@ -8,6 +8,9 @@ void render_all_sprites(unsigned char crashed);
 // A room: foes, then Geeko (hacking: hack pose).
 void render_room_sprites(unsigned char hacking);
 
+// The time map: Geeko blinking over the next era.
+void render_map_sprites(unsigned char epoch, unsigned char timer);
+
 // Nothing but sprite 0 (result card).
 void render_clear(void);
 

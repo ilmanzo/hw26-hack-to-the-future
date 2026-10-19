@@ -33,7 +33,7 @@ void player_reset(void) {
 void player_update(unsigned char pad, unsigned char pad_new) {
     ++player_bob_timer;
 
-    geeko_jump(&player, pad, pad_new);
+    geeko_jump(&player, pad_new);
 
     // Duck input
     if (pad & PAD_DOWN) {

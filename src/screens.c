@@ -1,6 +1,7 @@
 #include <neslib.h>
 #include <nesdoug.h>
 
+#include "gfx.h"
 #include "hud.h"
 #include "progress.h"
 #include "screens.h"
@@ -116,13 +117,19 @@ void title_screen_draw(void) {
     ppu_on_all();
 }
 
-void game_over_show(void) {
+void game_over_show(unsigned char finished) {
     static char buf[5];
 
     // Rendering off: this is more text than the VRAM buffer can flush in one vblank.
     ppu_off();
-    vram_adr(NTADR_A(11, 6));
-    vram_write("GAME OVER", 9);
+    if (finished) gfx_wipe(3);           // came from the map: wipe it (the HUD stays)
+    if (finished) {
+        vram_adr(NTADR_A(8, 6));
+        vram_write("TO BE CONTINUED", 15);
+    } else {
+        vram_adr(NTADR_A(11, 6));
+        vram_write("GAME OVER", 9);
+    }
     vram_adr(NTADR_A(10, 8));
     vram_write("SCORE ", 6);
     hud_num5(score, buf);
@@ -140,10 +147,7 @@ void result_card_draw(unsigned char clean, unsigned char hacked, unsigned char t
     unsigned int secs = race_frames / 60;
 
     ppu_off();
-    vram_adr(NTADR_A(0, 3));
-    vram_fill(0, 27 * 32);               // rows 3-29; the HUD rows stay
-    vram_adr(0x23c0);
-    vram_fill(0, 64);                    // attributes: palette 0 everywhere
+    gfx_wipe(3);                         // the HUD rows stay
 
     vram_adr(NTADR_A(8, 6));
     vram_write("INSTALL COMPLETE", 16);
