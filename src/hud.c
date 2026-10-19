@@ -1,11 +1,12 @@
 #include <neslib.h>
 #include <nesdoug.h>
+#include <mapper.h>
 
+#include "game.h"
 #include "hud.h"
 #include "progress.h"
 
-#define SPLIT_TARGET_TILE  0x89   // background tile with one pixel on its last row
-#define SPLIT_SPRITE_TILE  0x23   // sprite tile with one pixel on its first row
+#define HUD_IRQ_COUNT      22     // MMC3 scanline count: the handler's writes land on scanline 23
 
 // What the screen shows now, so hud_update() only writes changes (0xff: unknown, write it).
 static unsigned int last_secs, last_score, last_hi;
@@ -22,11 +23,6 @@ void hud_num5(unsigned int val, char *buf) {
 static void num_to_str2(unsigned char val, char *buf) {
     buf[0] = '0' + ((val / 10) % 10);
     buf[1] = '0' + (val % 10);
-}
-
-void hud_draw_split_target(void) {
-    vram_adr(NTADR_A(30, 2));
-    vram_put(SPLIT_TARGET_TILE);
 }
 
 void hud_draw_static(unsigned char in_room) {
@@ -46,18 +42,8 @@ void hud_draw_static(unsigned char in_room) {
         vram_write("SPD:20MPH  SCR:00000 HI:00000", 29);
     }
 
-    hud_draw_split_target();
-
     last_secs = last_score = last_hi = 0xffff;
     last_mult = last_a = last_total = 0xff;
-}
-
-void hud_sprite_zero(void) {
-    // Sprite 0 pixel row 0 is drawn on scanline Y + 1 = 23, the last HUD scanline, and
-    // overlaps the target tile's pixel at NTADR_A(30, 2). split() then scrolls from scanline
-    // 24, the first playfield line. Attr 0x20 = behind background (hidden by that pixel).
-    // (A hit on scanline 21 scrolled the bottom of the HUD text: glyph row 6 is scanline 22.)
-    oam_spr(240, 22, SPLIT_SPRITE_TILE, 0x20);
 }
 
 void hud_update(unsigned char in_room, unsigned char hacked, unsigned char total) {
@@ -115,12 +101,31 @@ void hud_update(unsigned char in_room, unsigned char hacked, unsigned char total
     }
 }
 
+// The IRQ array (nesdoug MMC3): a scanline count (one less than the lines to wait), then commands:
+// 0xf0 = $2000 write (the nametable bit), 0xf5 = $2005 write (the X scroll), 0xff = the end. The
+// handler's two writes land on scanline 23, before the PPU copies the scroll at dot 257, so the new
+// scroll applies from scanline 24. (A count of 23 landed on line 24; tests/smoke.lua asserts 23.)
+static char irq_array[6];
+
+void hud_irq_init(void) {
+    irq_array[0] = 0xff;
+    set_irq_ptr(irq_array);
+}
+
 void hud_scroll(unsigned char scrolling) {
-    if (scrolling) {
-        split(scroll_x);
-    }
     set_scroll_x(0);
     set_scroll_y(0);
+    while (!is_irq_done()) {}      // the IRQ has consumed last frame's array: safe to rewrite
+    if (scrolling) {
+        irq_array[0] = HUD_IRQ_COUNT;
+        irq_array[1] = 0xf0;
+        irq_array[2] = PPU_CTRL_BASE | ((scroll_x >> 8) & 1);
+        irq_array[3] = 0xf5;
+        irq_array[4] = scroll_x & 0xff;
+        irq_array[5] = 0xff;
+    } else {
+        irq_array[0] = 0xff;
+    }
 }
 
 void hud_year_show(unsigned int year) {

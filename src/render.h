@@ -11,7 +11,7 @@ void render_room_sprites(unsigned char hacking);
 // The time map: Geeko blinking over the next era.
 void render_map_sprites(unsigned char epoch, unsigned char timer);
 
-// Nothing but sprite 0 (result card).
+// No sprites (cards, the ending).
 void render_clear(void);
 
 #endif // RENDER_H

@@ -25,15 +25,8 @@ static void fire_trail_draw(void) {
     }
 }
 
-// Every frame starts the same way: sprite 0 in OAM slot 0, user sprites from OAM index 4.
-static void oam_begin(void) {
-    oam_clear();
-    hud_sprite_zero();
-    oam_set(4);
-}
-
 void render_all_sprites(unsigned char crashed) {
-    oam_begin();
+    oam_clear();
 
     // OAM order = priority. The PPU drops sprites past 8 per scanline, lowest priority first.
     // Geeko is 2 tiles wide, so 2 obstacles (2 tiles each) + Geeko + fire trail stay near 8:
@@ -46,17 +39,16 @@ void render_all_sprites(unsigned char crashed) {
 }
 
 void render_room_sprites(unsigned char hacking) {
-    oam_begin();
+    oam_clear();
     room_draw_foes();
     hero_draw(hacking);
 }
 
 void render_clear(void) {
     oam_clear();
-    hud_sprite_zero();
 }
 
 void render_map_sprites(unsigned char epoch, unsigned char timer) {
-    oam_begin();
+    oam_clear();
     map_draw_geeko(epoch, timer);
 }

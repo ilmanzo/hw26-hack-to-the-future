@@ -1,4 +1,4 @@
-CC = /home/andrea/.local/llvm-mos/bin/mos-nes-nrom-clang
+CC = /home/andrea/.local/llvm-mos/bin/mos-nes-mmc3-clang
 PYTHON = python3
 
 CFLAGS = -O2 -Isrc -Iassets
@@ -26,12 +26,12 @@ $(ROOMS_H): tools/build_rooms.py tools/check_rooms.py
 
 $(TARGET): $(SRCS) $(HEADERS) $(CHR_ROM) $(ROOMS_H) $(AUDIO)
 	$(CC) $(CFLAGS) $(SRCS) -o $(TARGET) $(LDFLAGS)
-	@echo "[SUCCESS] Built $(TARGET) for NES NROM"
+	@echo "[SUCCESS] Built $(TARGET) for NES MMC3"
 
 # No local llvm-mos SDK: build inside the Containerfile image.
 podman:
 	podman build -t llvm-mos -f Containerfile .
-	podman run --rm -v "$(CURDIR)":/src:Z llvm-mos make CC=mos-nes-nrom-clang
+	podman run --rm -v "$(CURDIR)":/src:Z llvm-mos make CC=mos-nes-mmc3-clang
 
 clean:
 	rm -f $(TARGET) $(CHR_ROM) $(ROOMS_H)

@@ -2,7 +2,8 @@
  * Hack to the Future: Geeko McFly
  * OpenSUSE Hack Week 26 - Retro NES race and hack
  *
- * Built with llvm-mos (mos-nes-nrom-clang), neslib, and nesdoug.
+ * Built with llvm-mos (mos-nes-mmc3-clang), neslib, and nesdoug. Mapper: MMC3 (CHR banks, and the
+ * scanline IRQ that splits the HUD from the scrolling road).
  *
  * main.c owns the game state machine; everything else lives in a module (see AGENTS.md):
  *   player / obstacles / progress  the race (Geeko on the road, score, clock)
@@ -11,8 +12,10 @@
  *   sfx                            music and sound effects (FamiTone2)
  */
 
+#include <6502.h>
 #include <neslib.h>
 #include <nesdoug.h>
+#include <mapper.h>
 
 #include "hero.h"
 #include "hud.h"
@@ -42,6 +45,10 @@
 
 #define CRASH_POSE_FRAMES  20   // the crash pose and burst last this long after a hit
 #define WARP_FLASH_FRAMES  30   // brightening; then as long again (plus a bit) to fade back
+
+// ROM image: 64 KB of PRG (the MMC3 linker script needs more than 32), one 8 KB tileset.
+MAPPER_PRG_ROM_KB(64);
+MAPPER_CHR_ROM_KB(8);
 
 static unsigned char game_state = STATE_TITLE;
 static unsigned char scene;           // SCENE_*
@@ -202,10 +209,29 @@ static void state_gameover(unsigned char pad_new) {
     }
 }
 
+// The MMC3 powers on in an undefined state. CHR: the 8 KB tileset as 1 KB units 0-7, A12 inverted so
+// the background (pattern table 0) is units 0-3 as four 1 KB banks and the sprites (table 1) are
+// units 4-7 as two 2 KB banks. PRG mode 0, bank 0 at $8000. Vertical mirroring: the two nametables
+// sit side by side for the scroll. Then the HUD's scanline IRQ.
+static void mapper_init(void) {
+    static const unsigned char chr_banks[6] = { 4, 6, 0, 1, 2, 3 };   // registers 0-5
+    unsigned char i;
+
+    disable_irq();
+    CLI();
+    set_prg_mode(PRG_MODE_0);
+    set_chr_a12_inversion(CHR_A12_INVERT);
+    set_prg_8000(0);
+    for (i = 0; i < 6; ++i) set_chr_bank(i, chr_banks[i]);
+    set_mirroring(MIRROR_VERTICAL);
+    hud_irq_init();
+}
+
 int main(void) {
     unsigned char pad;
     unsigned char pad_new;
 
+    mapper_init();
     sfx_init();
     ppu_off();
 
@@ -222,7 +248,7 @@ int main(void) {
     while (1) {
         ppu_wait_nmi();
 
-        // Sprite 0 hit split: HUD stays put, the ground below scrolls (only while racing).
+        // HUD stays put, the ground below scrolls (only while racing): the MMC3 IRQ splits them.
         hud_scroll(game_state == STATE_PLAYING);
 
         pad = pad_poll(0);
