@@ -119,7 +119,7 @@ void game_over_show(unsigned char finished) {
     static char buf[5];
 
     // Rendering off: this is more text than the VRAM buffer can flush in one vblank.
-    ppu_off();
+    gfx_screen_off();
     if (finished) gfx_wipe(3);           // came from the map: wipe it (the HUD stays)
     if (finished) {
         vram_adr(NTADR_A(8, 6));
@@ -144,7 +144,7 @@ void result_card_draw(unsigned char clean, unsigned char hacked, unsigned char t
     static char buf[5];
     unsigned int secs = race_frames / 60;
 
-    ppu_off();
+    gfx_screen_off();
     gfx_wipe(3);                         // the HUD rows stay
 
     vram_adr(NTADR_A(8, 6));

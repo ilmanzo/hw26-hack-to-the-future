@@ -26,7 +26,7 @@ static const unsigned char name_len[NODES] = { 9, 12, 15, 7, 13 };
 void map_show(unsigned char epoch) {
     unsigned char i;
 
-    ppu_off();
+    gfx_screen_off();
     pal_bg(room_bg_palette);
 
     gfx_wipe(3);                         // the HUD rows stay

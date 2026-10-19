@@ -17,6 +17,7 @@
 #include <nesdoug.h>
 #include <mapper.h>
 
+#include "gfx.h"
 #include "hero.h"
 #include "hud.h"
 #include "map.h"
@@ -63,7 +64,7 @@ static void race_begin(void) {
     scene = SCENE_RACE;
     year_idx = epoch;
 
-    ppu_off();
+    gfx_screen_off();
     pal_bg(bg_palette);
     background_draw(NTADR_A(0, 0));
     background_draw(NTADR_B(0, 0)); // Second nametable for seamless scroll

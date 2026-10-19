@@ -5,6 +5,11 @@
 
 static unsigned char attr[64];    // the attribute table of nametable A: one byte per 4x4 tiles
 
+void gfx_screen_off(void) {
+    ppu_off();
+    flush_vram_update2();
+}
+
 void gfx_wipe(unsigned char first_row) {
     unsigned char i;
 

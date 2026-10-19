@@ -66,7 +66,7 @@ void room_load(unsigned char id) {
     hit_taken = 0;
     progress_room_start();
 
-    ppu_off();
+    gfx_screen_off();
     pal_bg(room_bg_palette);
 
     gfx_wipe(0);
