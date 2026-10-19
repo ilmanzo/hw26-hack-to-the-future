@@ -7,7 +7,7 @@
 Rooms are rectangles (row0, row1, col0, col1, inclusive, tile units) plus object lists: the input
 format of tools/build_rooms.py, which turns the playable rooms into assets/rooms.h for the game.
 This script is a model of the jump, not the emulator: a recorded-input playthrough is
-still the proof. The jump numbers come from src/player.c (same fixed-point order), with one tile
+still the proof. The jump numbers come from src/geeko.h (same fixed-point order), with one tile
 (8 px) of margin everywhere.
 """
 import os
@@ -20,18 +20,18 @@ MARGIN = 8          # px of safety on every limit
 DROP_GAP = 6        # tiles: widest gap for a drop onto a lower surface
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_player_c = open(os.path.join(ROOT, "src", "player.c")).read()
+_geeko_h = open(os.path.join(ROOT, "src", "geeko.h")).read()
 
 
 def _const(pattern, name):
-    m = re.search(pattern, _player_c)
+    m = re.search(pattern, _geeko_h)
     if not m:
-        sys.exit(f"check_rooms.py: cannot find {name} in src/player.c (renamed? update the pattern)")
+        sys.exit(f"check_rooms.py: cannot find {name} in src/geeko.h (renamed? update the pattern)")
     return int(m.group(1), 0)
 
 
-GRAVITY = _const(r"#define\s+GRAVITY\s+(0x[0-9a-fA-F]+|\d+)", "GRAVITY")
-IMPULSE = _const(r"#define\s+JUMP_IMPULSE\s+\(-(0x[0-9a-fA-F]+|\d+)\)", "JUMP_IMPULSE")
+GRAVITY = _const(r"#define\s+GEEKO_GRAVITY\s+(0x[0-9a-fA-F]+|\d+)", "GEEKO_GRAVITY")
+IMPULSE = _const(r"#define\s+GEEKO_JUMP\s+(0x[0-9a-fA-F]+|\d+)", "GEEKO_JUMP")
 
 
 def frames_to_land(rise_px):
