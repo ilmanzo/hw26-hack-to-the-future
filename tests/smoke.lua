@@ -5,8 +5,8 @@ local sym, u8, u16, poke, check = T.sym, T.u8, T.u16, T.poke, T.check
 local wait, press, wait_until, tuning, STATE = T.wait, T.press, T.wait_until, T.tuning, T.STATE
 
 local PENALTY = tuning("HIT_TIME_PENALTY_S") * 60      -- frames
-local OBS_SIZE = 8       -- struct Obstacle in obstacles.c: x, y, width, height, type, active, hit, scored
-local OBS_BUG, OBS_DRONE = 0, 2
+local OBS_SIZE, OBS_BUG, OBS_DRONE = T.OBS_SIZE, T.OBS_BUG, T.OBS_DRONE
+local start_game, set_obstacle, plant = T.start_game, T.set_obstacle, T.plant
 
 -- Scanlines (< 240) on which the game writes PPUSCROLL mid-frame, i.e. where split() lands.
 local split_lines = {}
@@ -17,25 +17,6 @@ end, emu.callbackType.write, 0x2005, 0x2005)
 
 -- Second HUD text row as the PPU shows it (nametable A row 2, columns 1..29).
 local function hud_row() return T.nt_text(1, 2, 29) end
-
-local function start_game(button)   -- Start, or another button such as "a": the map, skipped, then the race
-  press({[button or "start"] = true}, 3)
-  if not wait_until(function() return u8("game_state") == STATE.MAP end, 10) then return false end
-  wait(tuning("MAP_SKIP_FRAMES") + 2)
-  press({a = true}, 2)
-  return wait_until(function() return u8("game_state") == STATE.PLAYING end, 10)
-end
-
--- Put an obstacle in a slot (struct: x, y, width, height, type, active, hit, scored).
-local function set_obstacle(slot, x, y, h, typ)
-  poke(sym.spawn_timer, 255)  -- no random spawns while the test is in control
-  for i, v in ipairs({x, y, 12, h, typ, 1, 0, 0}) do poke(sym.obstacles + slot * OBS_SIZE + i - 1, v) end
-end
--- Plant obstacle 0 right on top of the player.
-local function plant(typ, y, h)
-  set_obstacle(0, 46, y, h, typ)
-  wait(2)
-end
 
 -- Let the game spawn a drone itself (the type is random) and drop it onto the player, keeping the
 -- y the game chose. Other types are discarded.

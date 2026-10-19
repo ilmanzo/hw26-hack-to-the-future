@@ -147,6 +147,27 @@ function T.wait_until(fn, max)
   return fn()
 end
 
+-- Race helpers. start_game: press Start (or another button), skip the time map, wait for the race.
+function T.start_game(button)
+  T.press({[button or "start"] = true}, 3)
+  if not T.wait_until(function() return T.u8("game_state") == T.STATE.MAP end, 10) then return false end
+  T.wait(T.tuning("MAP_SKIP_FRAMES") + 2)
+  T.press({a = true}, 2)
+  return T.wait_until(function() return T.u8("game_state") == T.STATE.PLAYING end, 10)
+end
+
+-- Obstacles (struct Obstacle in obstacles.c: x, y, width, height, type, active, hit, scored; 8 bytes).
+T.OBS_SIZE, T.OBS_BUG, T.OBS_DRONE = 8, 0, 2
+function T.set_obstacle(slot, x, y, h, typ)
+  T.poke(sym.spawn_timer, 255)  -- no random spawns while the test is in control
+  for i, v in ipairs({x, y, 12, h, typ, 1, 0, 0}) do T.poke(sym.obstacles + slot * T.OBS_SIZE + i - 1, v) end
+end
+-- Plant obstacle 0 right on top of the race's Geeko.
+function T.plant(typ, y, h)
+  T.set_obstacle(0, 46, y, h, typ)
+  T.wait(2)
+end
+
 -- Room helpers. On the title screen SELECT starts room 1 (DEV_SELECT_ROOM); the title logic runs in
 -- any state once game_state is poked back to the title.
 function T.enter_room()
