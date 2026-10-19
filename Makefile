@@ -6,6 +6,7 @@ LDFLAGS = -lneslib -lnesdoug -lfamitone2
 
 TARGET = hacktothefuture.nes
 CHR_ROM = assets/graphics.chr
+ROOMS_H = assets/rooms.h
 
 SRCS = $(wildcard src/*.c) assets/chr-rom.s assets/audio.s
 AUDIO = $(wildcard assets/audio/*.s)
@@ -20,7 +21,10 @@ all: $(TARGET)
 $(CHR_ROM): tools/build_chr.py
 	$(PYTHON) tools/build_chr.py $(CHR_ROM)
 
-$(TARGET): $(SRCS) $(HEADERS) $(CHR_ROM) $(AUDIO)
+$(ROOMS_H): tools/build_rooms.py tools/check_rooms.py
+	$(PYTHON) tools/build_rooms.py $(ROOMS_H)
+
+$(TARGET): $(SRCS) $(HEADERS) $(CHR_ROM) $(ROOMS_H) $(AUDIO)
 	$(CC) $(CFLAGS) $(SRCS) -o $(TARGET) $(LDFLAGS)
 	@echo "[SUCCESS] Built $(TARGET) for NES NROM"
 
@@ -30,10 +34,10 @@ podman:
 	podman run --rm -v "$(CURDIR)":/src:Z llvm-mos make CC=mos-nes-nrom-clang
 
 clean:
-	rm -f $(TARGET) $(CHR_ROM)
+	rm -f $(TARGET) $(CHR_ROM) $(ROOMS_H)
 
 # Needs a built ROM (make, or make podman). Exit code 0 = all passed.
-TESTS = tests/smoke.lua
+TESTS = tests/smoke.lua tests/room.lua
 
 test:
 	@test -f $(TARGET) || { echo "build $(TARGET) first"; exit 1; }

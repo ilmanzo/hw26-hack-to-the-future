@@ -2,11 +2,13 @@
 #include <nesdoug.h>
 
 #include "game.h"
+#include "hero.h"
 #include "hud.h"
 #include "obstacles.h"
 #include "player.h"
 #include "progress.h"
 #include "render.h"
+#include "room.h"
 #include "sprites.h"
 
 static unsigned char fire_trail_frame = 0;
@@ -35,4 +37,17 @@ void render_all_sprites(unsigned char crashed) {
     if (mph >= MPH_WARP) {
         fire_trail_draw();
     }
+}
+
+void render_room_sprites(unsigned char hacking) {
+    oam_clear();
+    hud_sprite_zero();
+    oam_set(4);
+    room_draw_foes();
+    hero_draw(hacking);
+}
+
+void render_clear(void) {
+    oam_clear();
+    hud_sprite_zero();
 }

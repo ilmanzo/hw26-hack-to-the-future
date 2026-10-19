@@ -12,6 +12,7 @@ unsigned char mult = 1;
 unsigned int  time_left = GAME_TIME_S * 60u;
 unsigned char invuln = 0;
 unsigned char year_idx = 0;
+unsigned int  race_frames = 0;
 
 static unsigned char mph_sub = 0;     // frames since the last +1 MPH
 static unsigned char score_sub = 0;   // frames since the last speed points
@@ -37,12 +38,13 @@ void race_start(void) {
     streak = 0;
     mult = 1;
     invuln = 0;
+    race_frames = 0;
     speed_update();
 }
 
 void progress_update(void) {
     scroll_x += speed_px;
-    if (invuln) --invuln;
+    ++race_frames;
 
     if (mph < MPH_WARP && ++mph_sub >= RACE_FRAMES_PER_MPH) {
         mph_sub = 0;
@@ -56,14 +58,22 @@ void progress_update(void) {
     }
 }
 
+void progress_hit(void) {
+    invuln = INVULN_FRAMES;
+    clock_sub(HIT_TIME_PENALTY_S);
+}
+
 void progress_crash(void) {
     mph = mph > MPH_START + CRASH_MPH_LOSS ? mph - CRASH_MPH_LOSS : MPH_START;
     mph_sub = 0;
     speed_update();
     streak = 0;
     mult = 1;
-    invuln = INVULN_FRAMES;
-    clock_sub(HIT_TIME_PENALTY_S);
+    progress_hit();
+}
+
+void progress_room_start(void) {
+    invuln = 0;
 }
 
 void progress_dodge(void) {
@@ -93,6 +103,7 @@ void clock_sub(unsigned char seconds) {
 }
 
 unsigned char clock_tick(void) {
+    if (invuln) --invuln;
     if (time_left) --time_left;
     return time_left != 0;
 }

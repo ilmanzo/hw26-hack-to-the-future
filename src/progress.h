@@ -18,6 +18,7 @@ extern unsigned char mult;        // score multiplier, 1..MULT_MAX
 extern unsigned int  time_left;   // the clock, in frames (16 bits: 65535 frames = 1092 s at most)
 extern unsigned char invuln;      // frames of invulnerability left after a hit
 extern unsigned char year_idx;    // index into the year names, see year_text()
+extern unsigned int  race_frames; // frames of the current race (for the result card)
 
 void progress_reset(void);        // new game: score 0, full clock, first race
 void race_start(void);            // new race: 20 MPH, scroll 0; score and clock carry over
@@ -25,13 +26,16 @@ void race_start(void);            // new race: 20 MPH, scroll 0; score and clock
 // One race frame: scroll, speed, score ticks, invulnerability countdown.
 void progress_update(void);
 
-void progress_crash(void);        // race crash: lose speed and time, multiplier back to 1
+void progress_hit(void);          // any hit: lose time, start the invulnerability
+void progress_crash(void);        // race crash: a hit, plus lose speed, multiplier back to 1
+void progress_room_start(void);   // entering a room: no invulnerability left over
 void progress_dodge(void);        // an obstacle passed untouched: streak, multiplier, points
 
 void score_add(unsigned int points);   // saturates at 65535
 void clock_add(unsigned char seconds); // saturates at TIME_MAX_S
 void clock_sub(unsigned char seconds); // saturates at 0
-unsigned char clock_tick(void);        // one frame; 0 once the clock has run out
+unsigned char clock_tick(void);        // one frame (race or room): the clock and the invulnerability count down;
+                                       // returns 0 once the clock has run out
 
 // Call once when the run ends: updates the hi-score.
 void progress_game_over(void);

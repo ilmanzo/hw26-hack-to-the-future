@@ -211,19 +211,28 @@ local function body()
         left * tuning("FINISH_POINTS_PER_S")))
   check(math.abs(perfect - 26000) <= 500, "a flawless game is worth about 26,000 points (model: " .. perfect .. ")")
 
+  -- 88 MPH starts the time warp; for its first half second the race scene is frozen, with the fire trail.
+  check(u8("game_state") == STATE.WARP, "88 MPH starts the warp")
+
   -- Worst case for the 8-sprites-per-scanline limit: both obstacle slots at Geeko's height plus
-  -- the 88 MPH fire trail (the clean race above ended at 88 MPH).
-  poke(sym.invuln, 0)
-  for slot = 0, 1 do set_obstacle(slot, 130 + 40 * slot, 154, 14, OBS_BUG) end   -- far enough not to reach Geeko
+  -- the 88 MPH fire trail (frozen in the warp's first frames).
+  for slot = 0, 1 do set_obstacle(slot, 130 + 40 * slot, 154, 14, OBS_BUG) end
   local function worst(n)   -- the trail's second flame flickers, so look at several frames
     local m = 0
     for _ = 1, n do m = math.max(m, T.max_sprites_per_scanline()); wait(1) end
     return m
   end
   wait(3)
-  check(u8("game_state") == STATE.PLAYING, "worst-case scene is still playing")
   local most = worst(8)
-  check(most <= 8, "at most 8 sprites per scanline while playing at 88 MPH (found " .. most .. ")")
+  check(most <= 8, "at most 8 sprites per scanline at 88 MPH (found " .. most .. ")")
+
+  -- The warp ends in the room (1990).
+  check(wait_until(function() return u8("game_state") == STATE.ROOM end, 120), "the warp ends in the room")
+  wait(3)
+  check(T.nt_text(1, 1, 25) == T.nt_text(1, 1, 5) .. T.nt_text(6, 1, 5) .. "  YEAR 1990  X" .. T.nt_text(25, 1, 1),
+        "the HUD shows the room's year, 1990 (found '" .. T.nt_text(1, 1, 25) .. "')")
+  check(T.nt_text(1, 2, 8) == "HACK 0/2", "the HUD shows the terminals to hack")
+  T.shot("warp-room")
 end
 
 T.run(body, 16000)

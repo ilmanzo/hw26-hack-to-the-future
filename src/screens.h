@@ -14,4 +14,8 @@ void title_screen_draw(void);
 // direct writes (turns rendering off and on again).
 void game_over_show(void);
 
+// The card after a room: terminals, race time, clean-room bonus, score, rank. Turns rendering off
+// and on again.
+void result_card_draw(unsigned char clean, unsigned char hacked, unsigned char total);
+
 #endif // SCREENS_H

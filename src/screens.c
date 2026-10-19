@@ -4,6 +4,7 @@
 #include "hud.h"
 #include "progress.h"
 #include "screens.h"
+#include "tuning.h"
 
 // Background tiles (pattern table 0, see tools/build_chr.py)
 #define TILE_EMPTY         0x00
@@ -107,6 +108,11 @@ void title_screen_draw(void) {
 
     hud_draw_split_target();
 
+#if DEV_SELECT_ROOM
+    vram_adr(NTADR_A(6, 20));
+    vram_write("SELECT: ROOM TEST (DEV)", 23);
+#endif
+
     ppu_on_all();
 }
 
@@ -126,5 +132,55 @@ void game_over_show(void) {
     vram_write(rank_name(), 13);
     vram_adr(NTADR_A(7, 11));
     vram_write("PRESS A TO RESTART", 18);
+    ppu_on_all();
+}
+
+void result_card_draw(unsigned char clean, unsigned char hacked, unsigned char total) {
+    static char buf[5];
+    unsigned int secs = race_frames / 60;
+
+    ppu_off();
+    vram_adr(NTADR_A(0, 3));
+    vram_fill(0, 27 * 32);               // rows 3-29; the HUD rows stay
+    vram_adr(0x23c0);
+    vram_fill(0, 64);                    // attributes: palette 0 everywhere
+
+    vram_adr(NTADR_A(8, 6));
+    vram_write("INSTALL COMPLETE", 16);
+
+    vram_adr(NTADR_A(8, 8));
+    vram_write("RACE TIME ", 10);
+    buf[0] = '0' + secs / 60;
+    buf[1] = ':';
+    buf[2] = '0' + (secs % 60) / 10;
+    buf[3] = '0' + secs % 10;
+    vram_write(buf, 4);
+
+    vram_adr(NTADR_A(8, 9));
+    vram_write("TERMINALS ", 10);
+    buf[0] = '0' + hacked;
+    buf[1] = '/';
+    buf[2] = '0' + total;
+    vram_write(buf, 3);
+
+    vram_adr(NTADR_A(8, 10));
+    if (clean) {
+        vram_write("CLEAN ROOM BONUS", 16);
+    } else {
+        vram_write("HIT: NO BONUS", 13);
+    }
+
+    vram_adr(NTADR_A(8, 12));
+    vram_write("SCORE ", 6);
+    hud_num5(score, buf);
+    vram_write(buf, 5);
+
+    vram_adr(NTADR_A(8, 13));
+    vram_write("RANK  ", 6);
+    vram_write(rank_name(), 13);
+
+    vram_adr(NTADR_A(6, 16));
+    vram_write("PRESS A TO CONTINUE", 19);
+
     ppu_on_all();
 }

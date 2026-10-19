@@ -29,4 +29,7 @@ void hud_update(unsigned char in_room, unsigned char hacked, unsigned char total
 // the sprite-0 hit); otherwise the whole screen stays at 0.
 void hud_scroll(unsigned char scrolling);
 
+// Show a year (4 digits) in the HUD's year field, through the VRAM buffer (the warp rolls it).
+void hud_year_show(unsigned int year);
+
 #endif // HUD_H

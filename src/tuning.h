@@ -37,6 +37,9 @@
 #define RANK_3_SCORE         13000  // SYSADMIN
 #define RANK_4_SCORE         21000  // ROOT (below RANK_2_SCORE: NEWBIE)
 
+// Development: on the title screen, SELECT starts room 1 directly (set to 0 for a release build).
+#define DEV_SELECT_ROOM      1
+
 // Hacking: hold B this long next to a terminal.
 #define HACK_FRAMES_1990     60
 #define HACK_FRAMES_2000     75

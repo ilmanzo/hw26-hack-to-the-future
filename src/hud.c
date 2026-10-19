@@ -122,3 +122,12 @@ void hud_scroll(unsigned char scrolling) {
     set_scroll_x(0);
     set_scroll_y(0);
 }
+
+void hud_year_show(unsigned int year) {
+    static char buf[4];
+    buf[0] = '0' + (year / 1000) % 10;
+    buf[1] = '0' + (year / 100) % 10;
+    buf[2] = '0' + (year / 10) % 10;
+    buf[3] = '0' + year % 10;
+    multi_vram_buffer_horz(buf, 4, NTADR_A(18, 1));
+}
