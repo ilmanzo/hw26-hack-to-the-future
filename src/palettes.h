@@ -3,6 +3,7 @@
 
 // NES Color Palette Constants
 #define C_BLACK        0x0f
+#define C_SKY_BLUE     0x11   // the race's sky: the background colour of every race palette
 #define C_DARK_GRAY    0x00
 #define C_MED_GRAY     0x10
 #define C_WHITE        0x30
@@ -21,10 +22,10 @@
 
 // Background Palette (4 sub-palettes of 4 colors each)
 static const unsigned char bg_palette[16] = {
-    C_BLACK, C_DARK_GRAY, C_MED_GRAY, C_WHITE,        // 0: Sky / Text
-    C_BLACK, C_CYBER_BLUE, C_NEON_CYAN, C_GEEKO_GREEN, // 1: Cyber Road / Grid
-    C_BLACK, C_PURPLE, C_MCFLY_ORANGE, C_WHITE,       // 2: Mountains & Sun
-    C_BLACK, C_DARK_GRAY, C_ELECTRIC_BLU, C_WHITE     // 3: HUD / Accents
+    C_SKY_BLUE, C_DARK_GRAY, C_MED_GRAY, C_WHITE,        // 0: Sky / Text
+    C_SKY_BLUE, C_CYBER_BLUE, C_NEON_CYAN, C_GEEKO_GREEN, // 1: Cyber Road / Grid
+    C_SKY_BLUE, C_PURPLE, C_MCFLY_ORANGE, C_WHITE,       // 2: Mountains & Sun
+    C_SKY_BLUE, C_DARK_GRAY, C_ELECTRIC_BLU, C_WHITE     // 3: HUD / Accents
 };
 
 // Room background palette (room 1, 1990): solid brick and bar, terminals, gate, text
