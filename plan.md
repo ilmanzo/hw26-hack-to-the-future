@@ -650,7 +650,7 @@ An agent type belongs to a tier; a **lane** is (tier, side): agents of that tier
 
 * HUD row 1: `THE MAINFRAME` followed by one `#` per unhacked terminal; row 2: `TIME mm:ss` and score.
 * **Overload** (sixth terminal): 180 frames. Agents vanish, the eye cracks in 3 tile stages, the palette flashes every 8 frames, and the room shakes while the HUD stays still: the shake is the IRQ array `{22, 0xF5, shake_x, 0xFF}` (an MMC3 gain: the sprite-0 split could not shake only the room). Nametable B's left and right edge columns must be filled so the shake shows no garbage. Then the `WIN` row: ending story screen and the time left.
-* **Background colour (proposed, D11):** a **deep violet** (`0x03`) rather than black: it makes the red eye, the orange agents and the green terminals stand out, and it is clearly not the black of the other rooms. Alternatives: a dark crimson (`0x06`, danger, but the red eye blends in) or the room black with red flashes. The overload flashes the whole palette (`pal_bright`) as the warp does.
+* **Background colour (decided 2026-10-19):** a **deep violet** (`0x03`) rather than black: it makes the red eye, the orange agents and the green terminals stand out, and it is clearly not the black of the other rooms. Alternatives: a dark crimson (`0x06`, danger, but the red eye blends in) or the room black with red flashes. The overload flashes the whole palette (`pal_bright`) as the warp does.
 * **Tile budget (estimate, tight):** head about 12 + eye 2 frames x 16 = 32 + terminal 8 + cracks about 12 = 64 decor tiles, which is why the decor range is 96 tiles (`0x80-0xBF` and `0xE0-0xFF`).
 
 ### 8b.4 Tests
@@ -668,7 +668,7 @@ Decided (user, 2026-10-19):
 * **Score** (8a.7): points scale with speed, dodge streak multiplier, hacked terminals, clean rooms, a finish bonus; ranks; a flawless game is tuned to about 26,000.
 * **Balance numbers are plain `#define`s in `src/tuning.h`.**
 * **A time map** is shown between levels with Geeko blinking over the next era (8a.8).
-* **Backgrounds:** blue sky for the race, black for the rooms.
+* **Backgrounds:** blue sky for the race, black for the rooms, deep violet (`0x03`) for the boss arena (built with the boss, step 7.1: a palette like `room_bg_palette` with that first colour).
 * **One Geeko body** (`geeko.c`) serves every level; the code is kept free of duplicated parts (shared helpers: `geeko.c`, `gfx.c`, the test `lib.lua`).
 * **Mapper: MMC3** (section 7a).
 
@@ -687,7 +687,6 @@ Still open:
 | D4 | Rooms per epoch (10 minutes fits one; more rooms need a longer clock, and the 16-bit counter stops at 18:12) | 1 | 6.1 |
 | D5 | Branding: the openSUSE logo and AI agents named after real products in the concept art. Proposed renames: **PINCHBOT** (orange blocky crab), **WHIRLY** (teal swirl), **TWINKLE** (cyan star), redrawn rather than copied (`concept-art/PROMPTS.md`). Check the openSUSE logo guidelines | proposed names | 7.2 |
 | D9 | Time economy amounts (`tuning.h`: penalty 5 s, bonus 10 s, cap 600 s). A flawless run needs about 4:30 of the 10:00 (8a.6); a first-time player at twice the guessed room and boss times is near the limit | keep the proposed amounts | tuning |
-| D11 | Boss background colour: deep violet (proposed), crimson or black (8b.3) | deep violet `0x03` | 7.1 |
 | D10 | Hit knockback and invulnerability (10 frames of knockback, `INVULN_FRAMES` 60) are my values | keep | tuning |
 
 ---
